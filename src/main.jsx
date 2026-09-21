@@ -19,6 +19,7 @@ import { buildGroundedCourseDraft } from "./data/courseGeneration.js";
 import { groundedQuestionsForMission, addGroundedQuestion } from "./data/mcqBank.js";
 import { validateGroundedQuestion } from "./data/questionProvenance.js";
 import { getEvidenceLabel } from "./data/evidenceModel.js";
+import { buildBackupEnvelope, parseBackupFile, restoreBackupEnvelope } from "./data/backupManager.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -130,6 +131,7 @@ function App() {
           <button onClick={() => setPanel("readiness")}><BarChart3 size={16}/> Readiness</button>
           <button onClick={() => setPanel("course")}><BookOpen size={16}/> Course & Revision</button>
           <button onClick={() => setPanel("revision")}><RotateCcw size={16}/> Review Queue</button>
+          <button onClick={() => setPanel("backup")}><FileText size={16}/> Backup & Restore</button>
         </div>
       </aside>
 
@@ -155,6 +157,7 @@ function App() {
       {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} sources={sources} contentChunks={contentChunks} courseContent={courseContent} setCourseContent={setCourseContent} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "revision" && <RevisionPanel revisions={state.revisions} courseNodes={courseNodes} setState={setState} onClose={() => setPanel(null)} />}
+      {panel === "backup" && <BackupPanel state={{ ...state, activeMission: active, sources, contentChunks, courseContent, groundedQuestions, courseNodes }} setState={setState} setSources={setSources} setContentChunks={setContentChunks} setCourseContent={setCourseContent} setGroundedQuestions={setGroundedQuestions} setCourseNodes={setCourseNodes} onClose={() => setPanel(null)} />}
       {session && (
         <div className="session-overlay">
           <div className="session-card">
@@ -173,6 +176,40 @@ function App() {
       )}
     </div>
   );
+}
+
+function BackupPanel({ state, setState, setSources, setContentChunks, setCourseContent, setGroundedQuestions, setCourseNodes, onClose }) {
+  const [message, setMessage] = useState("");
+  const exportBackup = async () => {
+    const envelope = await buildBackupEnvelope(state);
+    const blob = new Blob([JSON.stringify(envelope)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `potential-pathway-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
+    URL.revokeObjectURL(url);
+    setMessage("Complete backup exported, including original source files.");
+  };
+  const importBackup = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const envelope = await parseBackupFile(file);
+      if (!window.confirm("Restore this PP backup? Current study data will be replaced.")) return;
+      const restored = await restoreBackupEnvelope(envelope);
+      setState(restored); setSources(restored.sources || []); setContentChunks(restored.contentChunks || []);
+      setCourseContent(restored.courseContent || []); setGroundedQuestions(restored.groundedQuestions || []); setCourseNodes(restored.courseNodes || []);
+      setMessage("Backup restored successfully.");
+    } catch (error) { setMessage(error.message || "Backup restore failed."); }
+    event.target.value = "";
+  };
+  return <div className="tool-overlay"><div className="tool-card readiness-card">
+    <button className="close-session" onClick={onClose}><X /></button>
+    <p className="eyebrow">DATA SAFETY</p><h2>Backup & Restore</h2>
+    <p className="muted">Protect your selection journey: progress, source evidence and original PDF/TXT/MD files are included.</p>
+    <div className="form-row"><button className="primary" onClick={exportBackup}>Export complete backup</button><label className="secondary" style={{cursor:"pointer"}}>Restore backup<input type="file" accept=".json,application/json" onChange={importBackup} hidden /></label></div>
+    {message && <div className="success-banner"><CheckCircle2 /> {message}</div>}
+    <p className="muted">Offline backup is available now. Automatic cloud backup remains a separate provider integration.</p>
+  </div></div>;
 }
 
 function formatTime(seconds) {
