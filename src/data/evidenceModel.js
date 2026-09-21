@@ -33,7 +33,7 @@ export const claimTypes = [
 export const evidencePolicy = {
   default: {
     firstChoice: "user-source",
-    fallbackLayers: ["official", "trusted-external", "secondary"],
+    fallbackLayers: ["trusted-external", "official", "secondary"],
     modelAllowed: false,
   },
   "course-content": {
