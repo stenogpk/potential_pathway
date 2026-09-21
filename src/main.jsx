@@ -251,7 +251,7 @@ function SourcePanel({ sources, setSources, onClose }) {
     <div className="form-row"><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
     <select value={missionId} onChange={(e)=>setMissionId(e.target.value)}>{missions.filter(m=>m.status==="active").map(m=><option key={m.id} value={m.id}>{m.title}</option>)}</select>
     <button className="primary" onClick={add}>Add source</button></div>
-    <div className="source-list">{sources.length ? sources.map(s=><div className="source-item" key={s.id}><FileText size={18}/><div><b>{s.title}</b><span>{missions.find(m=>m.id===s.missionId)?.title} · {s.status}</span></div></div>) : <div className="empty-state">No sources added yet.</div>}</div>
+    <div className="source-list">{sources.length ? sources.map(s=><div className="source-item" key={s.id}><FileText size={18}/><div><b>{s.title}</b><span>{missions.find(m=>m.id===s.missionId)?.title} · {s.authority || "user-provided"} · {s.type || "reference"} · {s.status}</span></div></div>) : <div className="empty-state">No sources added yet.</div>}</div>
   </div></div>;
 }
 
