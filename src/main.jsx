@@ -15,6 +15,8 @@ import { sourceMatches, sourceLabel } from "./data/sourceModel";
 import { advanceSourceStatus } from "./data/sourceStatus";
 import { archiveSource, sourceUsageCount } from "./data/sourceIntegrity";
 import { sourceStats } from "./data/sourceStats";
+import { ingestionCapability, normalizeExtractedText } from "./data/ingestion";
+import { createContentChunk } from "./data/contentIndex";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -143,7 +145,7 @@ function App() {
           : <Mission mission={selectedMission} onStart={startSession} sessions={state.sessions.filter((s) => s.missionId === selectedMission.id)} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} />}
       </main>
 
-      {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} courseNodes={courseNodes} onClose={() => setPanel(null)} />}
+      {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} setState={setState} courseNodes={courseNodes} onClose={() => setPanel(null)} />}
       {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} missionId={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} sources={sources} setState={setState} onClose={() => setPanel(null)} />}
@@ -243,16 +245,17 @@ function Mission({ mission, onStart, sessions, attempts, revisions, courseNodes 
 
 const demoQuestions = questionBank;
 
-function SourcePanel({ sources, setSources, onClose, courseNodes = [] }) {
+function SourcePanel({ sources, setSources, setState, onClose, courseNodes = [] }) {
   const [title, setTitle] = useState("");
   const [missionId, setMissionId] = useState("pcs");
   const [fileInfo, setFileInfo] = useState(null);
   const [query, setQuery] = useState("");
-  const add = () => {
+  const add = async () => {
     const clean = title.trim() || fileInfo?.name;
     if (!clean) return;
-    setSources((current) => [{
-      id: crypto.randomUUID(),
+    const id = crypto.randomUUID();
+    const source = {
+      id,
       title: clean,
       missionId,
       type: fileInfo?.type || "reference",
@@ -260,9 +263,21 @@ function SourcePanel({ sources, setSources, onClose, courseNodes = [] }) {
       status: fileInfo ? "file-selected" : "pending",
       fileName: fileInfo?.name || null,
       fileSize: fileInfo?.size || null,
+      mimeType: fileInfo?.mimeType || null,
       sourceRefs: [],
       addedAt: Date.now()
-    }, ...current]);
+    };
+    setSources((current) => [source, ...current]);
+    if (fileInfo?.file && /\\.(txt|md)$/i.test(fileInfo.name)) {
+      const text = normalizeExtractedText(await fileInfo.file.text());
+      if (text) {
+        setState((current) => ({
+          ...current,
+          contentChunks: [createContentChunk({ sourceId: id, missionId, page: 1, heading: clean, text }), ...(current.contentChunks || [])],
+        }));
+        setSources((current) => current.map((s) => s.id === id ? { ...s, status: "indexed", indexedAt: Date.now(), extractedTextStatus: "complete" } : s));
+      }
+    }
     setTitle("");
     setFileInfo(null);
   };
@@ -273,7 +288,7 @@ function SourcePanel({ sources, setSources, onClose, courseNodes = [] }) {
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">SOURCE MANAGER</p><h2>Build the source layer</h2>
     <p className="muted">Select a source file or enter its name. The file metadata is recorded now; parsing/indexing will be connected to the source engine next.</p>
-    <div className="form-row"><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search sources" /><input type="file" accept=".pdf,.txt,.md,.doc,.docx" onChange={(e)=>{const file=e.target.files?.[0]; setFileInfo(file ? {name:file.name,size:file.size,type:file.type || "reference"} : null);}} /><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
+    <div className="form-row"><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search sources" /><input type="file" accept=".pdf,.txt,.md,.doc,.docx" onChange={(e)=>{const file=e.target.files?.[0]; setFileInfo(file ? {name:file.name,size:file.size,type:file.type || "reference",mimeType:file.type || null,file} : null);}} /><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
     <select value={missionId} onChange={(e)=>setMissionId(e.target.value)}>{missions.filter(m=>m.status==="active").map(m=><option key={m.id} value={m.id}>{m.title}</option>)}</select>
     <button className="primary" onClick={add}>Add source</button></div>
     <div className="readiness-grid"><div><span>Total</span><b>{sourceStats(sources, courseNodes, []).total}</b></div><div><span>Indexed</span><b>{sourceStats(sources, courseNodes, []).indexed}</b></div><div><span>Attached</span><b>{sourceStats(sources, courseNodes, []).attached}</b></div></div><div className="source-list">{visibleSources.length ? visibleSources.map(s=><div className="source-item" key={s.id}><FileText size={18}/><div><b>{sourceLabel(s)}</b><span>{missions.find(m=>m.id===s.missionId)?.title} · {s.authority || "user-provided"} · {s.fileName || s.type || "reference"} · {s.status}{s.fileSize ? ` · ${Math.ceil(s.fileSize / 1024)} KB` : ""}</span></div><div className="node-actions"><button className="secondary" onClick={()=>advanceSource(s.id)}>Advance</button><button className="secondary" onClick={()=>removeSource(s.id)}>{sourceUsageCount(s.id, courseNodes, demoQuestions) > 0 ? "Archive" : "Delete"}</button></div></div>) : <div className="empty-state">No matching sources.</div>}</div>
