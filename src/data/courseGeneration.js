@@ -30,7 +30,7 @@ function buildStructuredSections(context = []) {
     else if (index === 1) sections.crux.push(block);
     else sections.details.push(block);
 
-    if (/d{1,4}|%|₹|Rs.?|date|year/i.test(text)) {
+    if (/\b\d{1,4}\b|%|₹|Rs\.?|date|year/i.test(text)) {
       sections.facts.push(asEvidenceBlock(item));
     }
 
