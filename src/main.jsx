@@ -368,6 +368,7 @@ function CoursePanel({ nodes, setNodes, revisions, setState, onClose }) {
   const [kind, setKind] = useState("subject");
   const [parentId, setParentId] = useState("");
   const [name, setName] = useState("");
+  const [status, setStatus] = useState("not-started");
   const subjects = nodes.filter((n) => n.missionId === missionId && n.kind === "subject");
   const topics = nodes.filter((n) => n.missionId === missionId && n.kind === "topic");
   const add = () => {
@@ -380,7 +381,7 @@ function CoursePanel({ nodes, setNodes, revisions, setState, onClose }) {
       kind,
       name: clean,
       parentId: kind === "subject" ? null : parentId,
-      status: "not-started",
+      status,
       sourceRefs: [],
       createdAt: Date.now(),
     };
@@ -410,6 +411,7 @@ function CoursePanel({ nodes, setNodes, revisions, setState, onClose }) {
         <option value="">Select topic</option>{topics.map((n)=><option key={n.id} value={n.id}>{n.name}</option>)}
       </select>}
       <input value={name} onChange={(e)=>setName(e.target.value)} placeholder="Enter course node name" />
+      <select value={status} onChange={(e)=>setStatus(e.target.value)}><option value="not-started">Not started</option><option value="learning">Learning</option><option value="revision-ready">Revision ready</option><option value="completed">Completed</option></select>
       <button className="primary" onClick={add}>Add</button>
     </div>
     <div className="readiness-grid"><div><span>Course nodes</span><b>{nodes.length}</b></div><div><span>Revision cards</span><b>{revisions.length}</b></div><div><span>Due now</span><b>{due}</b></div></div>
