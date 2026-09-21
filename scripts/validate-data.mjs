@@ -3,7 +3,7 @@ import { questionSchema, attemptSchema, revisionSchema } from "../src/data/quest
 import { missions } from "../src/data/missions.js";
 import { sourceStatuses, sourceTypes } from "../src/data/sourceModel.js";
 import { contentIndexSchema } from "../src/data/contentIndex.js";
-import { sourceSearch } from "../src/data/sourceSearch.js";
+import { searchSources } from "../src/data/sourceSearch.js";
 import { sourceStats } from "../src/data/sourceStats.js";
 
 const required = (obj, keys, label) => {
@@ -22,7 +22,7 @@ required(revisionSchema, ["id","missionId","topicId","sourceRefs","dueAt","inter
 if (!sourceStatuses.includes("indexed") || !sourceStatuses.includes("active")) throw new Error("Source lifecycle is incomplete.");
 if (!sourceTypes.includes("official-pdf")) throw new Error("Source types are incomplete.");
 required(contentIndexSchema, ["sourceId","missionId","page","heading","text","contentType","createdAt"], "content index schema");
-if (typeof sourceSearch !== "undefined" && typeof sourceStats !== "function") throw new Error("Source utilities are not loadable.");
+if (typeof searchSources !== "function" || typeof sourceStats !== "function") throw new Error("Source utilities are not loadable.");
 
 if (!Array.isArray(missions) || missions.length < 2) {
   throw new Error("Expected at least two configured missions.");
