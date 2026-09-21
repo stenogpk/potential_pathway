@@ -182,7 +182,9 @@ function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttemp
       <div className="hero-orbit"><div className="orbit-ring ring-1" /><div className="orbit-ring ring-2" /><div className="orbit-core">PP</div></div>
     </section>
 
-    {completed && <div className="success-banner"><CheckCircle2 /> Session recorded. Your study time is saved on this device.</div>}\n\n    <section className="planner-card"><div><p className="eyebrow">NEXT BEST STUDY BLOCK</p><h3>50-minute adaptive plan</h3><p className="muted">The order adapts to due revision, repeated weak topics and unfinished course nodes.</p></div><div className="planner-steps">{planner.plan.map((item, index) => <div className="planner-step" key={`${item.type}-${index}`}><span>{index + 1}</span><div><b>{item.label}</b><small>{item.minutes} min · {item.type}</small></div></div>)}</div></section>
+    {completed && <div className="success-banner"><CheckCircle2 /> Session recorded. Your study time is saved on this device.</div>}
+
+    <section className="planner-card"><div><p className="eyebrow">NEXT BEST STUDY BLOCK</p><h3>50-minute adaptive plan</h3><p className="muted">The order adapts to due revision, repeated weak topics and unfinished course nodes.</p></div><div className="planner-steps">{planner.plan.map((item, index) => <div className="planner-step" key={`${item.type}-${index}`}><span>{index + 1}</span><div><b>{item.label}</b><small>{item.minutes} min · {item.type}</small></div></div>)}</div></section>
 
     <div className="section-heading"><div><p className="eyebrow">ACTIVE MISSIONS</p><h2>Your preparation pathways</h2></div><span className="muted">{sessionCount} session{sessionCount === 1 ? "" : "s"} today</span></div>
     <div className="mission-grid">{missions.map((m) => <MissionCard key={m.id} mission={m} onStart={onStart} progress={missionProgress(sessions, m.id, attempts, revisions, courseNodes)} />)}</div>
