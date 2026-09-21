@@ -43,3 +43,17 @@ export function upsertRevision(current, revision) {
   const rows = current.filter((item) => item.id !== revision.id);
   return [revision, ...rows];
 }
+
+
+export function migrateStudyState(parsed) {
+  if (!parsed || typeof parsed !== "object") return initialState;
+  return {
+    ...initialState,
+    ...parsed,
+    sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+    sources: Array.isArray(parsed.sources) ? parsed.sources : [],
+    attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
+    revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [],
+    courseNodes: Array.isArray(parsed.courseNodes) ? parsed.courseNodes : [],
+  };
+}
