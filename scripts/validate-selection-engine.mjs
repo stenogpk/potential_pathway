@@ -3,9 +3,9 @@ import { calculateReadiness } from "../src/data/readiness.js";
 import { buildStudyPlan } from "../src/data/planner.js";
 
 const now = Date.now();
-const card = { id: "r1", dueAt: now - 1000, repetitions: 0, lastResult: null };
+const card = { id: "r1", missionId: "pcs", dueAt: now - 1000, repetitions: 0, lastResult: null };
 if (getRevisionState(card, now) !== "due") throw new Error("Due revision state failed.");
-const fresh = { id: "r0", dueAt: now + 86400000, repetitions: 0, lastResult: null };
+const fresh = { id: "r0", missionId: "pcs", dueAt: now + 86400000, repetitions: 0, lastResult: null };
 if (getRevisionState(fresh, now) !== "new") throw new Error("New revision state failed.");
 
 const weak = { ...card, lastResult: "incorrect" };
