@@ -5,6 +5,8 @@ import { buildStudyPlan } from "../src/data/planner.js";
 const now = Date.now();
 const card = { id: "r1", dueAt: now - 1000, repetitions: 0, lastResult: null };
 if (getRevisionState(card, now) !== "due") throw new Error("Due revision state failed.");
+const fresh = { id: "r0", dueAt: now + 86400000, repetitions: 0, lastResult: null };
+if (getRevisionState(fresh, now) !== "new") throw new Error("New revision state failed.");
 
 const weak = { ...card, lastResult: "incorrect" };
 if (getRevisionState(weak, now) !== "weak-error") throw new Error("Weak/error revision state failed.");
