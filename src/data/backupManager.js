@@ -1,5 +1,5 @@
 import { createBackupEnvelope, validateBackupEnvelope } from "./backupModel.js";
-import { listSourceFiles } from "./sourceFileStore.js";
+import { listSourceFiles, saveSourceFile } from "./sourceFileStore.js";
 
 const BACKUP_KEY = "pp-backup-settings-v1";
 const DEBOUNCE_MS = 2500;
@@ -26,9 +26,40 @@ export function saveBackupSettings(settings) {
   }));
 }
 
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+    reader.onerror = () => reject(reader.error || new Error("Could not read source file."));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export async function buildBackupEnvelope(state) {
   const files = await listSourceFiles();
-  return createBackupEnvelope(state, files);
+  const sourceFiles = await Promise.all(files.map(async (row) => ({
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    size: row.size,
+    lastModified: row.lastModified,
+    data: await blobToBase64(row.blob),
+  })));
+  return {
+    ...createBackupEnvelope(state, sourceFiles),
+    sourceFiles,
+  };
+}
+
+export async function restoreBackupEnvelope(envelope) {
+  const result = validateBackupEnvelope(envelope);
+  if (!result.valid) throw new Error(result.reason);
+  for (const item of envelope.sourceFiles || []) {
+    const bytes = Uint8Array.from(atob(item.data || ""), (char) => char.charCodeAt(0));
+    const file = new File([bytes], item.name, { type: item.type, lastModified: item.lastModified || Date.now() });
+    await saveSourceFile(item.id, file);
+  }
+  return envelope.studyState;
 }
 
 export function downloadBackup(envelope, filename = "potential-pathway-backup.json") {
