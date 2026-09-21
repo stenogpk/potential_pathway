@@ -15,3 +15,20 @@ export function calculateReadiness({ sessions = [], attempts = [], revisions = [
     totalTopics: missionTopics.length,
   };
 }
+
+
+export function topicAccuracy(attempts, missionId) {
+  const rows = attempts.filter((attempt) => attempt.missionId === missionId);
+  const byTopic = new Map();
+  rows.forEach((attempt) => {
+    const current = byTopic.get(attempt.topicId) || { attempts: 0, correct: 0 };
+    current.attempts += 1;
+    if (attempt.isCorrect) current.correct += 1;
+    byTopic.set(attempt.topicId, current);
+  });
+  return [...byTopic.entries()].map(([topicId, value]) => ({
+    topicId,
+    ...value,
+    accuracy: value.attempts ? Math.round((value.correct / value.attempts) * 100) : null,
+  }));
+}
