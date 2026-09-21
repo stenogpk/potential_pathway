@@ -1,4 +1,4 @@
-const STORAGE_KEY = "pp-study-state-v4";
+const STORAGE_KEY = "pp-study-state-v5";
 
 export const initialState = {
   sessions: [],
@@ -6,6 +6,7 @@ export const initialState = {
   attempts: [],
   revisions: [],
   courseNodes: [],
+  contentChunks: [],
   activeMission: "dashboard",
   version: 4,
 };
@@ -22,6 +23,7 @@ export function loadState() {
       attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
       revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [],
       courseNodes: Array.isArray(parsed.courseNodes) ? parsed.courseNodes : [],
+      contentChunks: Array.isArray(parsed.contentChunks) ? parsed.contentChunks : [],
     };
   } catch {
     return initialState;
@@ -31,7 +33,7 @@ export function loadState() {
 export function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     ...state,
-    version: 4,
+    version: 5,
   }));
 }
 
@@ -55,5 +57,6 @@ export function migrateStudyState(parsed) {
     attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
     revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [],
     courseNodes: Array.isArray(parsed.courseNodes) ? parsed.courseNodes : [],
+    contentChunks: Array.isArray(parsed.contentChunks) ? parsed.contentChunks : [],
   };
 }
