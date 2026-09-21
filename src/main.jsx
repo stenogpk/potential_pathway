@@ -140,7 +140,7 @@ function App() {
         </header>
 
         {active === "dashboard"
-          ? <Dashboard onStart={startSession} completed={completed} todayMinutes={todayMinutes} sessionCount={todaySessions.length} todayAttempts={todayAttempts} todayCorrect={todayCorrect} sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} />
+          ? <Dashboard onStart={startSession} completed={completed} todayMinutes={todayMinutes} sessionCount={todaySessions.length} todayAttempts={todayAttempts} todayCorrect={todayCorrect} sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} contentChunks={contentChunks} />
           : <Mission mission={selectedMission} onStart={startSession} sessions={state.sessions.filter((s) => s.missionId === selectedMission.id)} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} />}
       </main>
 
@@ -175,8 +175,8 @@ function formatTime(seconds) {
   return `${m}:${s}`;
 }
 
-function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttempts, todayCorrect, sessions, attempts, revisions, courseNodes }) {
-  const planner = buildStudyPlan({ missionId: "pcs", availableMinutes: 50, sessions, attempts, revisions, courseNodes });
+function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttempts, todayCorrect, sessions, attempts, revisions, courseNodes, contentChunks }) {
+  const planner = buildStudyPlan({ missionId: "pcs", availableMinutes: 50, sessions, attempts, revisions, courseNodes, contentChunks });
   return <div className="content">
     <section className="hero-card">
       <div>
