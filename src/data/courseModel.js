@@ -23,6 +23,7 @@ export const courseEntitySchema = {
   },
   topic: {
     id: "string",
+    parentId: "string | null",
     subjectId: "string",
     name: "string",
     sourceRefs: [],
@@ -30,6 +31,7 @@ export const courseEntitySchema = {
   },
   subtopic: {
     id: "string",
+    parentId: "string | null",
     topicId: "string",
     name: "string",
     core: "",
