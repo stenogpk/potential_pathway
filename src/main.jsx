@@ -413,6 +413,14 @@ function CoursePanel({ nodes, setNodes, revisions, sources, setState, onClose })
   const attachSource = (nodeId, value) => setNodes((current) => current.map((n) => n.id === nodeId ? { ...n, sourceRefs: value ? [value] : [], updatedAt: Date.now() } : n));
   const due = revisions.filter((r) => r.missionId === missionId && r.dueAt <= Date.now()).length;
   const grouped = missions.filter((m) => m.status === "active").map((m) => ({ mission: m, rows: nodes.filter((n) => n.missionId === m.id) }));
+  const childrenOf = (parentId) => missionNodes.filter((n) => n.parentId === parentId);
+  const renderNode = (node, depth = 0) => <div className="course-tree-item" key={node.id} style={{ marginLeft: depth * 18 }}>
+    <div className="course-node-row">
+      <div><b>{node.kind}: {node.name}</b><span>{node.sourceRefs?.length ? `Source attached · ${sources.find((s)=>s.id===node.sourceRefs[0])?.title || node.sourceRefs[0]}` : "No source attached"}</span></div>
+      <div className="node-actions"><select value={node.status} onChange={(e)=>setNodeStatus(node.id,e.target.value)}><option value="not-started">Not started</option><option value="learning">Learning</option><option value="revision-ready">Revision ready</option><option value="completed">Completed</option></select><select value={node.sourceRefs?.[0] || ""} onChange={(e)=>attachSource(node.id,e.target.value)}><option value="">No source</option>{sources.filter((s)=>s.missionId===missionId).map((s)=><option key={s.id} value={s.id}>{s.title}</option>)}</select></div>
+    </div>
+    {childrenOf(node.id).map((child) => renderNode(child, depth + 1))}
+  </div>;
   return <div className="tool-overlay"><div className="tool-card readiness-card">
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">COURSE + REVISION</p><h2>Course tree</h2>
@@ -432,10 +440,7 @@ function CoursePanel({ nodes, setNodes, revisions, sources, setState, onClose })
       <button className="primary" onClick={add}>Add</button>
     </div>
     <div className="readiness-grid"><div><span>Course nodes</span><b>{missionNodes.length}</b></div><div><span>Revision cards</span><b>{revisions.filter((r)=>r.missionId===missionId).length}</b></div><div><span>Due now</span><b>{due}</b></div></div>
-    <div className="course-tree-list">{missionNodes.length ? missionNodes.map((n)=><div className="course-node-row" key={n.id}>
-      <div><b>{n.kind}: {n.name}</b><span>{n.sourceRefs?.length ? `Source attached · ${sources.find((s)=>s.id===n.sourceRefs[0])?.title || n.sourceRefs[0]}` : "No source attached"}</span></div>
-      <div className="node-actions"><select value={n.status} onChange={(e)=>setNodeStatus(n.id,e.target.value)}><option value="not-started">Not started</option><option value="learning">Learning</option><option value="revision-ready">Revision ready</option><option value="completed">Completed</option></select><select value={n.sourceRefs?.[0] || ""} onChange={(e)=>attachSource(n.id,e.target.value)}><option value="">No source</option>{sources.filter((s)=>s.missionId===missionId).map((s)=><option key={s.id} value={s.id}>{s.title}</option>)}</select></div>
-    </div>) : <div className="empty-state">No nodes configured yet.</div>}</div>
+    <div className="course-tree-list">{missionNodes.length ? missionNodes.filter((n)=>!n.parentId).map((n)=>renderNode(n)) : <div className="empty-state">No nodes configured yet.</div>}</div>
     <div className="source-list">{grouped.map(({mission,rows})=><div className="source-item" key={mission.id}><BookOpen size={18}/><div><b>{mission.title}</b><span>{rows.length ? rows.map((n)=>`${n.kind}: ${n.name} · ${n.status}`).join(" · ") : "No nodes configured yet"}</span></div></div>)}</div>
   </div></div>;
 }
