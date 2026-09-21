@@ -20,6 +20,8 @@ export function buildGroundedCourseDraft({ chunks, missionId, topic, limit = 6 }
     body: item.text,
     sourceRefs: [item.sourceId],
     sourceChunkRefs: [item.chunkId],
+    evidenceLayers: [item.evidenceLayer || "user-source"],
+    sourceUrls: item.sourceUrl ? [item.sourceUrl] : [],
   })).filter(Boolean);
 
   return {
