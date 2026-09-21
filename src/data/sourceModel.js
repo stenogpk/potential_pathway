@@ -2,12 +2,14 @@ export const sourceTypes = [
   "official-pdf",
   "reference",
   "notes",
+  "external-url",
   "other",
 ];
 
 export const sourceAuthorities = [
   "official",
   "user-provided",
+  "trusted-external",
   "secondary",
 ];
 
@@ -23,12 +25,15 @@ export const sourceSchema = {
   id: "string",
   missionId: "string",
   title: "string",
-  type: "official-pdf | reference | notes | other",
-  authority: "official | user-provided | secondary",
+  type: "official-pdf | reference | notes | external-url | other",
+  authority: "official | user-provided | trusted-external | secondary",
   status: "pending | file-selected | indexed | active | archived",
   fileName: "string | null",
   fileSize: "number | null",
   mimeType: "string | null",
+  url: "string | null",
+  publisher: "string | null",
+  verification: "object | null",
 };
 
 export function createSource({
@@ -41,6 +46,9 @@ export function createSource({
   fileName = null,
   fileSize = null,
   mimeType = null,
+  url = null,
+  publisher = null,
+  verification = null,
 }) {
   return {
     id,
@@ -52,5 +60,8 @@ export function createSource({
     fileName,
     fileSize,
     mimeType,
+    url,
+    publisher,
+    verification,
   };
 }
