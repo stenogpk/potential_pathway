@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  ArrowRight, BookOpen, Brain, CheckCircle2, Clock3, FlaskConical,
-  Flame, LayoutDashboard, Menu, Play, RotateCcw, Target, Trophy, X
+  ArrowRight, BookOpen, Brain, CheckCircle2, Clock3, FileText, FlaskConical,
+  Flame, LayoutDashboard, Menu, Play, RotateCcw, Target, Trophy, X, CircleHelp, BarChart3
 } from "lucide-react";
 import "./styles.css";
 import { missions } from "./data/missions";
@@ -16,6 +16,9 @@ function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [session, setSession] = useState(null);
   const [completed, setCompleted] = useState(false);
+  const [panel, setPanel] = useState(null);
+  const [sources, setSources] = useState(state.sources || []);
+  const [questionState, setQuestionState] = useState({ index: 0, selected: null, score: 0, attempts: 0 });
 
   useEffect(() => {
     saveState({ ...state, activeMission: active });
@@ -100,6 +103,11 @@ function App() {
           })}
         </nav>
         <div className="sidebar-note"><Brain size={18} /><div><b>AI Pathway</b><span>Source-grounded planning will connect here.</span></div></div>
+        <div className="quick-tools">
+          <button onClick={() => setPanel("sources")}><FileText size={16}/> Sources</button>
+          <button onClick={() => setPanel("mcq")}><CircleHelp size={16}/> Practice MCQs</button>
+          <button onClick={() => setPanel("readiness")}><BarChart3 size={16}/> Readiness</button>
+        </div>
       </aside>
 
       {menuOpen && <button className="backdrop" aria-label="Close menu" onClick={() => setMenuOpen(false)} />}
@@ -119,6 +127,9 @@ function App() {
           : <Mission mission={selectedMission} onStart={startSession} sessions={state.sessions.filter((s) => s.missionId === selectedMission.id)} />}
       </main>
 
+      {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} onClose={() => setPanel(null)} />}
+      {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} onClose={() => setPanel(null)} />}
+      {panel === "readiness" && <ReadinessPanel sessions={state.sessions} questionState={questionState} onClose={() => setPanel(null)} />}
       {session && (
         <div className="session-overlay">
           <div className="session-card">
@@ -203,6 +214,59 @@ function Mission({ mission, onStart, sessions }) {
       </section>
     </div>
   </div>;
+}
+
+const demoQuestions = [
+  { id: "pp-demo-1", stem: "Practice engine is ready. Which cycle is the PP readiness loop built around?", options: ["Learn → Practice → Revise → Analyse → Retain", "Read → Memorise → Stop", "Only MCQs", "Only video lectures"], correct: 0 },
+  { id: "pp-demo-2", stem: "Where should detailed mission content come from?", options: ["Random web summaries", "Source-grounded official/reference material", "Unverified notes only", "Generated content without sources"], correct: 1 },
+];
+
+function SourcePanel({ sources, setSources, onClose }) {
+  const [title, setTitle] = useState("");
+  const [missionId, setMissionId] = useState("pcs");
+  const add = () => {
+    const clean = title.trim();
+    if (!clean) return;
+    setSources((current) => [{ id: crypto.randomUUID(), title: clean, missionId, status: "pending", addedAt: Date.now() }, ...current]);
+    setTitle("");
+  };
+  return <div className="tool-overlay"><div className="tool-card">
+    <button className="close-session" onClick={onClose}><X /></button>
+    <p className="eyebrow">SOURCE MANAGER</p><h2>Build the source layer</h2>
+    <p className="muted">Add the official PDF/reference name now. Actual file ingestion will be connected next.</p>
+    <div className="form-row"><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
+    <select value={missionId} onChange={(e)=>setMissionId(e.target.value)}>{missions.filter(m=>m.status==="active").map(m=><option key={m.id} value={m.id}>{m.title}</option>)}</select>
+    <button className="primary" onClick={add}>Add source</button></div>
+    <div className="source-list">{sources.length ? sources.map(s=><div className="source-item" key={s.id}><FileText size={18}/><div><b>{s.title}</b><span>{missions.find(m=>m.id===s.missionId)?.title} · {s.status}</span></div></div>) : <div className="empty-state">No sources added yet.</div>}</div>
+  </div></div>;
+}
+
+function McqPanel({ questionState, setQuestionState, onClose }) {
+  const q = demoQuestions[questionState.index];
+  const answered = questionState.selected !== null;
+  const choose = (i) => {
+    if (answered) return;
+    setQuestionState((s) => ({ ...s, selected: i, attempts: s.attempts + 1, score: s.score + (i === q.correct ? 1 : 0) }));
+  };
+  const next = () => setQuestionState((s) => ({ ...s, index: (s.index + 1) % demoQuestions.length, selected: null }));
+  return <div className="tool-overlay"><div className="tool-card">
+    <button className="close-session" onClick={onClose}><X /></button>
+    <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2>
+    <div className="question-meta">Question {questionState.index + 1} / {demoQuestions.length} · Score {questionState.score}/{questionState.attempts}</div>
+    <h3>{q.stem}</h3><div className="options">{q.options.map((o,i)=><button key={o} className={answered ? (i===q.correct ? "option correct" : i===questionState.selected ? "option wrong" : "option") : "option"} onClick={()=>choose(i)}>{String.fromCharCode(65+i)}. {o}</button>)}</div>
+    {answered && <div className={questionState.selected===q.correct ? "answer good" : "answer bad"}>{questionState.selected===q.correct ? "Correct — recorded for this session." : "Not correct — review the explanation/source before moving on."}</div>}
+    <button className="primary" onClick={next}>{answered ? "Next question" : "Skip for now"}</button>
+  </div></div>;
+}
+
+function ReadinessPanel({ sessions, questionState, onClose }) {
+  const mins=Math.floor(sessions.reduce((a,s)=>a+(s.actualSeconds||0),0)/60);
+  const accuracy=questionState.attempts ? Math.round(questionState.score/questionState.attempts*100) : null;
+  return <div className="tool-overlay"><div className="tool-card readiness-card">
+    <button className="close-session" onClick={onClose}><X /></button><p className="eyebrow">READINESS SNAPSHOT</p><h2>What your data says</h2>
+    <div className="readiness-grid"><div><span>Study logged</span><b>{mins} min</b></div><div><span>MCQ attempts</span><b>{questionState.attempts}</b></div><div><span>Accuracy</span><b>{accuracy === null ? "—" : accuracy+"%"}</b></div></div>
+    <p className="muted">This is an early instrument, not an exam prediction. Readiness will become topic-weighted after real question and revision data are connected.</p>
+  </div></div>;
 }
 
 function Stat({ icon: Icon, label, value, note }) {
