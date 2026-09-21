@@ -11,7 +11,8 @@
     "validate:source-lifecycle": "node scripts/validate-source-lifecycle.mjs",
     "validate:source-registry": "node scripts/validate-source-registry.mjs",
     "validate:source-storage": "node scripts/validate-source-storage.mjs",
-    "validate:source-content": "node scripts/validate-source-content.mjs"
+    "validate:source-content": "node scripts/validate-source-content.mjs",
+    "validate:source-ingestion": "node scripts/validate-source-ingestion.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",

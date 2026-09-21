@@ -3,6 +3,7 @@ const STORAGE_KEY = "pp-study-state-v4";
 export const initialState = {
   sessions: [],
   sources: [],
+  contentChunks: [],
   attempts: [],
   revisions: [],
   courseNodes: [],
@@ -38,6 +39,7 @@ export function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     ...state,
     sources: normalizeSources(state.sources),
+    contentChunks: Array.isArray(state.contentChunks) ? state.contentChunks : [],
     version: 4,
   }));
 }
@@ -58,6 +60,7 @@ export function migrateStudyState(parsed) {
     ...parsed,
     sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
     sources: normalizeSources(parsed.sources),
+    contentChunks: Array.isArray(parsed.contentChunks) ? parsed.contentChunks : [],
     attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
     revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [],
     courseNodes: Array.isArray(parsed.courseNodes) ? parsed.courseNodes : [],
