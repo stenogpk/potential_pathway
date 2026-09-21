@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import { missions } from "./data/missions";
-import { calculateMarks, createRevisionCard, getMissionMarking, nextRevision, questionBank } from "./data/questions";
+import { calculateMarks, createRevisionCard, getMissionMarking, nextRevision, questionBank } from "./data/questions";\nimport { getDueRevisions, revisionSummary } from "./data/revision";\nimport { calculateReadiness } from "./data/readiness";
 import { loadState, saveState } from "./lib/storage";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
@@ -302,11 +302,11 @@ function ReadinessPanel({ sessions, attempts, onClose }) {
   const mins=Math.floor(sessions.reduce((a,s)=>a+(s.actualSeconds||0),0)/60);
   const total=attempts.length;
   const correct=attempts.filter((a)=>a.isCorrect).length;
-  const accuracy=total ? Math.round(correct/total*100) : null;
+  const accuracy=total ? Math.round(correct/total*100) : null;\n  const dueCount = getDueRevisions([]).length;
   return <div className="tool-overlay"><div className="tool-card readiness-card">
     <button className="close-session" onClick={onClose}><X /></button><p className="eyebrow">READINESS SNAPSHOT</p><h2>What your data says</h2>
     <div className="readiness-grid"><div><span>Study logged</span><b>{mins} min</b></div><div><span>MCQ attempts</span><b>{total}</b></div><div><span>Accuracy</span><b>{accuracy === null ? "—" : accuracy+"%"}</b></div></div>
-    <p className="muted">This is an early instrument, not an exam prediction. Accuracy now comes from persisted MCQ attempts, so it survives reloads and can later be broken down by mission and topic.</p>
+    <p className="muted">This is an early instrument, not an exam prediction. Accuracy comes from persisted MCQ attempts.</p>
   </div></div>;
 }
 function CoursePanel({ nodes, setNodes, revisions, setState, onClose }) {
