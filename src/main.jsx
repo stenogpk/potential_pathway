@@ -15,6 +15,7 @@ import { availableSourceStatuses, transitionSource } from "./data/sourceLifecycl
 import { sourceStats } from "./data/sourceStats.js";
 import { prepareSource, createSourceRecord, sourceChunkCount } from "./data/sourceManager.js";
 import { searchSources } from "./data/sourceSearch.js";
+import { buildGroundedCourseDraft } from "./data/courseGeneration.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -27,12 +28,13 @@ function App() {
   const [panel, setPanel] = useState(null);
   const [sources, setSources] = useState(state.sources || []);
   const [contentChunks, setContentChunks] = useState(state.contentChunks || []);
+  const [courseContent, setCourseContent] = useState(state.courseContent || []);
   const [courseNodes, setCourseNodes] = useState(state.courseNodes || []);
   const [questionState, setQuestionState] = useState({ index: 0, selected: null, score: 0, attempts: 0 });
 
   useEffect(() => {
-    saveState({ ...state, activeMission: active, sources, contentChunks, courseNodes });
-  }, [state, active, sources, courseNodes]);
+    saveState({ ...state, activeMission: active, sources, contentChunks, courseContent, courseNodes });
+  }, [state, active, sources, contentChunks, courseContent, courseNodes]);
 
   const selectedMission = useMemo(
     () => missions.find((m) => m.id === active) ?? missions[0],
@@ -147,7 +149,7 @@ function App() {
       {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} contentChunks={contentChunks} setContentChunks={setContentChunks} onClose={() => setPanel(null)} />}
       {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} missionId={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
-      {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} sources={sources} setState={setState} onClose={() => setPanel(null)} />}
+      {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} sources={sources} contentChunks={contentChunks} courseContent={courseContent} setCourseContent={setCourseContent} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "revision" && <RevisionPanel revisions={state.revisions} courseNodes={courseNodes} setState={setState} onClose={() => setPanel(null)} />}
       {session && (
         <div className="session-overlay">
@@ -440,7 +442,7 @@ function RevisionPanel({ revisions, courseNodes, setState, onClose }) {
   </div></div>
 }
 
-function CoursePanel({ nodes, setNodes, revisions, sources, setState, onClose }) {
+function CoursePanel({ nodes, setNodes, revisions, sources, contentChunks, courseContent, setCourseContent, setState, onClose }) {
   const [missionId, setMissionId] = useState("pcs");
   const [kind, setKind] = useState("subject");
   const [parentId, setParentId] = useState("");
@@ -448,6 +450,9 @@ function CoursePanel({ nodes, setNodes, revisions, sources, setState, onClose })
   const [status, setStatus] = useState("not-started");
   const [sourceId, setSourceId] = useState("");
   const missionNodes = nodes.filter((n) => n.missionId === missionId);
+  const missionCourseContent = courseContent.filter((item) => item.missionId === missionId);
+  const [groundingTopic, setGroundingTopic] = useState("");
+  const [groundingMessage, setGroundingMessage] = useState("");
   const subjects = missionNodes.filter((n) => n.kind === "subject");
   const topics = missionNodes.filter((n) => n.kind === "topic");
   const add = () => {
@@ -461,6 +466,20 @@ function CoursePanel({ nodes, setNodes, revisions, sources, setState, onClose })
   const setNodeStatus = (nodeId, nextStatus) => setNodes((current) => current.map((n) => n.id === nodeId ? { ...n, status: nextStatus, updatedAt: Date.now() } : n));
   const attachSource = (nodeId, value) => setNodes((current) => current.map((n) => n.id === nodeId ? { ...n, sourceRefs: value ? [value] : [], updatedAt: Date.now() } : n));
   const due = revisions.filter((r) => r.missionId === missionId && r.dueAt <= Date.now()).length;
+  const buildGroundedDraft = () => {
+    const topic = groundingTopic.trim();
+    if (!topic) return;
+    const result = buildGroundedCourseDraft({ chunks: contentChunks, missionId, topic });
+    if (!result.generated) {
+      setGroundingMessage("No matching source evidence found. Nothing was generated.");
+      return;
+    }
+    setCourseContent((current) => [
+      ...result.content,
+      ...current.filter((item) => !(item.missionId === missionId && item.title === topic)),
+    ]);
+    setGroundingMessage(`Added ${result.content.length} source-backed evidence lesson(s).`);
+  };
   const grouped = missions.filter((m) => m.status === "active").map((m) => ({ mission: m, rows: nodes.filter((n) => n.missionId === m.id) }));
   const childrenOf = (parentId) => missionNodes.filter((n) => n.parentId === parentId);
   const renderNode = (node, depth = 0) => <div className="course-tree-item" key={node.id} style={{ marginLeft: depth * 18 }}>
@@ -489,6 +508,20 @@ function CoursePanel({ nodes, setNodes, revisions, sources, setState, onClose })
       <button className="primary" onClick={add}>Add</button>
     </div>
     <div className="readiness-grid"><div><span>Course nodes</span><b>{missionNodes.length}</b></div><div><span>Revision cards</span><b>{revisions.filter((r)=>r.missionId===missionId).length}</b></div><div><span>Due now</span><b>{due}</b></div></div>
+    <div className="panel" style={{ marginTop: 16 }}>
+      <p className="eyebrow">SOURCE-GROUNDED COURSE BUILDER</p>
+      <p className="muted">Builds an evidence draft only from indexed source chunks. No source match means no generation.</p>
+      <div className="form-row">
+        <input value={groundingTopic} onChange={(e)=>setGroundingTopic(e.target.value)} placeholder="Enter a topic to ground from sources" />
+        <button className="primary" onClick={buildGroundedDraft}>Build evidence draft</button>
+      </div>
+      {groundingMessage && <p className="muted">{groundingMessage}</p>}
+      {missionCourseContent.length > 0 && <div className="source-list">
+        {missionCourseContent.map((item) => <div className="source-item" key={item.id}>
+          <FileText size={18}/><div><b>{item.title}</b><span>{item.kind} · source {item.sourceRefs.join(", ")}</span><p>{item.body}</p></div>
+        </div>)}
+      </div>}
+    </div>
     <div className="course-tree-list">{missionNodes.length ? missionNodes.filter((n)=>!n.parentId).map((n)=>renderNode(n)) : <div className="empty-state">No nodes configured yet.</div>}</div>
     <div className="source-list">{grouped.map(({mission,rows})=><div className="source-item" key={mission.id}><BookOpen size={18}/><div><b>{mission.title}</b><span>{rows.length ? rows.map((n)=>`${n.kind}: ${n.name} · ${n.status}`).join(" · ") : "No nodes configured yet"}</span></div></div>)}</div>
   </div></div>;
