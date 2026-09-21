@@ -23,12 +23,21 @@ export async function extractTextFile(file) {
   return text;
 }
 
+function chunkEvidence(source) {
+  return {
+    evidenceLayer: source?.authority === "official" ? "official" : "user-source",
+    sourceUrl: source?.url || null,
+    publisher: source?.publisher || null,
+  };
+}
+
 export async function ingestTextSource({ source, file, maxLength = 1200 }) {
   if (!source?.id || !source?.missionId) throw new Error("Source identity is required.");
   const rawText = await extractTextFile(file);
   const parts = splitTextIntoChunks(rawText, { maxLength });
   if (!parts.length) throw new Error("No indexable text chunks were produced.");
 
+  const evidence = chunkEvidence(source);
   const chunks = parts.map((text, index) => createContentChunk({
     id: source.id + ":chunk-" + (index + 1),
     sourceId: source.id,
@@ -36,10 +45,20 @@ export async function ingestTextSource({ source, file, maxLength = 1200 }) {
     locator: (source.fileName || file.name) + "#chunk-" + (index + 1),
     text,
     order: index,
+    ...evidence,
   })).filter(Boolean);
 
   if (!chunks.length) throw new Error("Text extraction produced no valid content chunks.");
   return { chunks, chunkCount: chunks.length };
+}
+
+export async function ingestPdfSourceWithEvidence({ source, file, maxLength = 1400 }) {
+  const result = await ingestPdfSource({ source, file, maxLength });
+  const evidence = chunkEvidence(source);
+  return {
+    ...result,
+    chunks: result.chunks.map((chunk) => ({ ...chunk, ...evidence })),
+  };
 }
 
 export { ingestPdfSource };
