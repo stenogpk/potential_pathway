@@ -7,7 +7,7 @@ import {
 import "./styles.css";
 import { missions } from "./data/missions";
 import { calculateMarks, createRevisionCard, getMissionMarking, nextRevision, questionBank } from "./data/questions";
-import { getDueRevisions, revisionSummary } from "./data/revision";
+import { getDueRevisions, revisionSummary, scheduleRevision } from "./data/revision";
 import { calculateReadiness, topicAccuracy } from "./data/readiness";
 import { loadState, saveState } from "./lib/storage";
 
@@ -117,6 +117,7 @@ function App() {
           <button onClick={() => setPanel("mcq")}><CircleHelp size={16}/> Practice MCQs</button>
           <button onClick={() => setPanel("readiness")}><BarChart3 size={16}/> Readiness</button>
           <button onClick={() => setPanel("course")}><BookOpen size={16}/> Course & Revision</button>
+          <button onClick={() => setPanel("revision")}><RotateCcw size={16}/> Review Queue</button>
         </div>
       </aside>
 
@@ -141,6 +142,7 @@ function App() {
       {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} setState={setState} onClose={() => setPanel(null)} />}
+      {panel === "revision" && <RevisionPanel revisions={state.revisions} courseNodes={courseNodes} setState={setState} onClose={() => setPanel(null)} />}
       {session && (
         <div className="session-overlay">
           <div className="session-card">
@@ -327,6 +329,36 @@ function ReadinessPanel({ sessions, attempts, revisions, courseNodes, activeMiss
     <p className="muted">This is an early instrument, not an exam prediction. It summarizes persisted study, practice, revision and course data.</p>
   </div></div>;
 }
+function RevisionPanel({ revisions, courseNodes, setState, onClose }) {
+  const [index, setIndex] = useState(0);
+  const due = getDueRevisions(revisions).sort((a, b) => a.dueAt - b.dueAt);
+  const card = due[index];
+  const topic = card ? courseNodes.find((n) => n.id === card.topicId || n.id === card.topicId)?.name : null;
+  const review = (isCorrect) => {
+    if (!card) return;
+    const updated = scheduleRevision(card, isCorrect);
+    setState((current) => ({
+      ...current,
+      revisions: [updated, ...current.revisions.filter((r) => r.id !== card.id)],
+    }));
+    setIndex((value) => Math.min(value, Math.max(0, due.length - 2)));
+  };
+  return <div className="tool-overlay"><div className="tool-card readiness-card">
+    <button className="close-session" onClick={onClose}><X /></button>
+    <p className="eyebrow">REVIEW QUEUE</p><h2>Due revision cards</h2>
+    {card ? <>
+      <div className="question-meta">{index + 1} / {due.length} due · {card.missionId}</div>
+      <h3>{topic || card.topicId}</h3>
+      <p className="muted">Revision card due {new Date(card.dueAt).toLocaleString("en-IN")} · interval {card.intervalDays} day(s).</p>
+      <div className="session-controls">
+        <button className="secondary" onClick={() => review(false)}>Need another review</button>
+        <button className="primary" onClick={() => review(true)}><CheckCircle2 /> I remembered it</button>
+      </div>
+    </> : <div className="empty-state"><CheckCircle2 size={20}/> No revision cards are due right now.</div>}
+    <p className="muted">Correct reviews advance the interval through the PP revision schedule; incorrect reviews return to a 1-day interval.</p>
+  </div></div>
+}
+
 function CoursePanel({ nodes, setNodes, revisions, setState, onClose }) {
   const [missionId, setMissionId] = useState("pcs");
   const [kind, setKind] = useState("subject");
