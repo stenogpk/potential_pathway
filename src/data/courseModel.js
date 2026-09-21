@@ -70,3 +70,14 @@ export function createCourseNode({ missionId, subjectId = null, topicId = null, 
     createdAt: Date.now(),
   };
 }
+
+
+export function updateCourseNode(nodes, nodeId, patch) {
+  return nodes.map((node) => node.id === nodeId ? { ...node, ...patch, updatedAt: Date.now() } : node);
+}
+
+export function courseTree(nodes, missionId) {
+  return nodes
+    .filter((node) => node.missionId === missionId)
+    .map((node) => ({ ...node, children: nodes.filter((child) => child.parentId === node.id) }));
+}
