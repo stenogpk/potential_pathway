@@ -1,4 +1,4 @@
-import { prepareSource, createSourceRecord } from "../src/data/sourceManager.js";
+import { prepareSource, createSourceRecord, isPdfSource } from "../src/data/sourceManager.js";
 
 const file = {
   name: "notes.txt",
@@ -15,10 +15,13 @@ if (!result.chunks.every((chunk) => chunk.sourceId === source.id && chunk.missio
   throw new Error("Chunk provenance is incomplete.");
 }
 
-const pdf = createSourceRecord({ title: "PDF", missionId: "pcs", file: { name: "book.pdf", size: 10, type: "application/pdf" } });
-const untouched = await prepareSource(pdf, { name: "book.pdf" });
-if (untouched.indexed || untouched.source.status !== "file-selected" || untouched.chunks.length) {
-  throw new Error("Unsupported source format must remain unindexed.");
+const pdf = createSourceRecord({
+  title: "PDF",
+  missionId: "pcs",
+  file: { name: "book.pdf", size: 10, type: "application/pdf" },
+});
+if (!isPdfSource(pdf) || pdf.status !== "file-selected") {
+  throw new Error("PDF source must be recognized and ready for browser indexing.");
 }
 
 console.log("Source manager ingestion integration validation passed.");
