@@ -111,9 +111,11 @@ function App() {
 
   return (
     <div className="app-shell">
+      <div className="developer-watermark" aria-label="Developed by Shartendu">Developed by Shartendu</div>
       <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
         <div className="brand">
           <div className="brand-mark">PP</div>
+          <div className="developer-brand">Developed by Shartendu</div>
           <div><strong>Potential Pathway</strong><span>Exam Preparation System</span></div>
         </div>
         <nav>
