@@ -227,6 +227,7 @@ function Mission({ mission, onStart, sessions, attempts, revisions, courseNodes 
         <div className="signal"><span>MCQ accuracy</span><b>{readiness.accuracy === null ? "—" : `${readiness.accuracy}%`}</b></div>
         <div className="signal"><span>Revision due</span><b>{readiness.revisionDue}</b></div>
         <div className="signal"><span>Topics completed</span><b>{readiness.completedTopics}/{readiness.totalTopics || 0}</b></div>
+        <div className="signal"><span>Attempts</span><b>{readiness.attempts}</b></div>
       </section>
     </div>
   </div>;
