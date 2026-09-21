@@ -18,7 +18,7 @@ function App() {
   const [session, setSession] = useState(null);
   const [completed, setCompleted] = useState(false);
   const [panel, setPanel] = useState(null);
-  const [sources, setSources] = useState(state.sources || []);
+  const [sources, setSources] = useState(state.sources || []);\n  const [courseNodes, setCourseNodes] = useState(state.courseNodes || []);
   const [questionState, setQuestionState] = useState({ index: 0, selected: null, score: 0, attempts: 0 });
 
   useEffect(() => {
@@ -110,7 +110,7 @@ function App() {
         <div className="quick-tools">
           <button onClick={() => setPanel("sources")}><FileText size={16}/> Sources</button>
           <button onClick={() => setPanel("mcq")}><CircleHelp size={16}/> Practice MCQs</button>
-          <button onClick={() => setPanel("readiness")}><BarChart3 size={16}/> Readiness</button>
+          <button onClick={() => setPanel("readiness")}><BarChart3 size={16}/> Readiness</button>\n          <button onClick={() => setPanel("course")}><BookOpen size={16}/> Course & Revision</button>
         </div>
       </aside>
 
@@ -133,7 +133,7 @@ function App() {
 
       {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} onClose={() => setPanel(null)} />}
       {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} onClose={() => setPanel(null)} />}
-      {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} onClose={() => setPanel(null)} />}
+      {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} onClose={() => setPanel(null)} />}\n      {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} setState={setState} onClose={() => setPanel(null)} />}
       {session && (
         <div className="session-overlay">
           <div className="session-card">
@@ -295,4 +295,45 @@ function ReadinessPanel({ sessions, attempts, onClose }) {
     <p className="muted">This is an early instrument, not an exam prediction. Accuracy now comes from persisted MCQ attempts, so it survives reloads and can later be broken down by mission and topic.</p>
   </div></div>;
 }
+function CoursePanel({ nodes, setNodes, revisions, setState, onClose }) {
+  const [missionId, setMissionId] = useState("pcs");
+  const [kind, setKind] = useState("subject");
+  const [name, setName] = useState("");
+  const add = () => {
+    const clean = name.trim();
+    if (!clean) return;
+    const parent = kind === "topic" ? nodes.find((n) => n.missionId === missionId && n.kind === "subject") : null;
+    const node = {
+      id: crypto.randomUUID(),
+      missionId,
+      kind,
+      name: clean,
+      parentId: parent?.id || null,
+      status: "not-started",
+      sourceRefs: [],
+      createdAt: Date.now(),
+    };
+    setNodes((current) => [node, ...current]);
+    setName("");
+  };
+  const due = revisions.filter((r) => r.dueAt <= Date.now()).length;
+  const grouped = missions.filter((m) => m.status === "active").map((m) => ({
+    mission: m,
+    rows: nodes.filter((n) => n.missionId === m.id),
+  }));
+  return <div className="tool-overlay"><div className="tool-card readiness-card">
+    <button className="close-session" onClick={onClose}><X /></button>
+    <p className="eyebrow">COURSE + REVISION</p><h2>Build the course tree</h2>
+    <p className="muted">Create only source-backed structure. Content and syllabus details will be added when authoritative material is supplied.</p>
+    <div className="form-row">
+      <select value={missionId} onChange={(e)=>setMissionId(e.target.value)}>{missions.filter(m=>m.status==="active").map(m=><option key={m.id} value={m.id}>{m.title}</option>)}</select>
+      <select value={kind} onChange={(e)=>setKind(e.target.value)}><option value="subject">Subject</option><option value="topic">Topic</option><option value="subtopic">Subtopic</option></select>
+      <input value={name} onChange={(e)=>setName(e.target.value)} placeholder="Enter course node name" />
+      <button className="primary" onClick={add}>Add</button>
+    </div>
+    <div className="readiness-grid"><div><span>Course nodes</span><b>{nodes.length}</b></div><div><span>Revision cards</span><b>{revisions.length}</b></div><div><span>Due now</span><b>{due}</b></div></div>
+    <div className="source-list">{grouped.map(({mission,rows})=><div className="source-item" key={mission.id}><BookOpen size={18}/><div><b>{mission.title}</b><span>{rows.length ? rows.map((n)=>n.name).join(" · ") : "No nodes configured yet"}</span></div></div>)}</div>
+  </div></div>;
+}
+
 
