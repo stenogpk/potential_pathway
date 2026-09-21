@@ -5,16 +5,10 @@ import {
   Flame, LayoutDashboard, Menu, Play, RotateCcw, Target, Trophy, X
 } from "lucide-react";
 import "./styles.css";
-import { missions, missionProgress } from "./data/missions";
-import { initialState, loadState, saveState } from "./lib/storage";
+import { missions } from "./data/missions";
+import { loadState, saveState } from "./lib/storage";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
-
-/*
-  { id: "pcs", title: "PCS / GS", subtitle: "Primary Mission", icon: Target, color: "violet", accent: "Your main preparation pathway", defaultMinutes: 50 },
-  { id: "chemistry", title: "PGT Chemistry", subtitle: "Secondary Mission", icon: FlaskConical, color: "cyan", accent: "30 min daily pathway", defaultMinutes: 30 },
-  { id: "roaro", title: "RO / ARO", subtitle: "Coming Soon", icon: BookOpen, color: "amber", accent: "Separate syllabus & question bank", defaultMinutes: 50 },
-];
 
 function App() {
   const [state, setState] = useState(loadState);
@@ -101,7 +95,7 @@ function App() {
         <nav>
           <button className={active === "dashboard" ? "nav-item active" : "nav-item"} onClick={() => setActiveMission("dashboard")}><LayoutDashboard size={19} /> Dashboard</button>
           {missions.map((m) => {
-            const Icon = m.icon;
+            const Icon = missionIcons[m.iconName];
             return <button key={m.id} className={active === m.id ? "nav-item active" : "nav-item"} onClick={() => setActiveMission(m.id)}><Icon size={19} /> {m.title}</button>;
           })}
         </nav>
