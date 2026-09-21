@@ -7,8 +7,8 @@ import {
 import "./styles.css";
 import { missions, missionProgress } from "./data/missions";
 import { calculateMarks, createRevisionCard, getMissionMarking, nextRevision, questionBank } from "./data/questions";
-import { getDueRevisions, scheduleRevision } from "./data/revision";
-import { calculateReadiness, topicAccuracy } from "./data/readiness";
+import { getDueRevisions, revisionLoad, scheduleRevision } from "./data/revision";
+import { calculateReadiness, topicAccuracy, weakestTopics } from "./data/readiness";
 import { loadState, saveState } from "./lib/storage";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
@@ -312,6 +312,8 @@ function ReadinessPanel({ sessions, attempts, revisions, courseNodes, activeMiss
   const [missionId, setMissionId] = useState(activeMission);
   const readiness = calculateReadiness({ sessions, attempts, revisions, courseNodes, missionId });
   const topicRows = topicAccuracy(attempts, missionId).filter((row) => row.attempts > 0).sort((a, b) => a.accuracy - b.accuracy);
+  const weakTopics = weakestTopics(attempts, missionId);
+  const revision = revisionLoad(revisions);
   const mission = missions.find((m) => m.id === missionId);
   return <div className="tool-overlay"><div className="tool-card readiness-card">
     <button className="close-session" onClick={onClose}><X /></button>
@@ -325,9 +327,10 @@ function ReadinessPanel({ sessions, attempts, revisions, courseNodes, activeMiss
       <div><span>Study logged</span><b>{readiness.studyMinutes} min</b></div>
       <div><span>MCQ attempts</span><b>{readiness.attempts}</b></div>
       <div><span>Accuracy</span><b>{readiness.accuracy === null ? "—" : readiness.accuracy+"%"}</b></div>
-      <div><span>Revision due</span><b>{readiness.revisionDue}</b></div>
+      <div><span>Revision due</span><b>{readiness.revisionDue}</b></div><div><span>Overdue &gt;24h</span><b>{revision.overdue}</b></div>
       <div><span>Topics completed</span><b>{readiness.completedTopics}/{readiness.totalTopics || 0}</b></div>
     </div>
+    {weakTopics.length > 0 && <div className="source-list"><div className="eyebrow">REPEATED WEAK TOPICS</div>{weakTopics.map((row) => <div className="source-item" key={`weak-${row.topicId}`}><BarChart3 size={18}/><div><b>{row.topicId}</b><span>{row.accuracy}% accuracy · {row.attempts} attempts</span></div></div>)}</div>}
     {topicRows.length > 0 && <div className="source-list">
       <div className="eyebrow">TOPIC SIGNALS</div>
       {topicRows.slice(0, 5).map((row) => <div className="source-item" key={row.topicId}><BarChart3 size={18}/><div><b>{row.topicId}</b><span>{row.accuracy}% accuracy · {row.attempts} attempts</span></div></div>)}
