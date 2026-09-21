@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import { missions } from "./data/missions";
+import { questionBank } from "./data/questions";
 import { loadState, saveState } from "./lib/storage";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
@@ -219,10 +220,7 @@ function Mission({ mission, onStart, sessions }) {
   </div>;
 }
 
-const demoQuestions = [
-  { id: "pp-demo-1", stem: "Practice engine is ready. Which cycle is the PP readiness loop built around?", options: ["Learn → Practice → Revise → Analyse → Retain", "Read → Memorise → Stop", "Only MCQs", "Only video lectures"], correct: 0 },
-  { id: "pp-demo-2", stem: "Where should detailed mission content come from?", options: ["Random web summaries", "Source-grounded official/reference material", "Unverified notes only", "Generated content without sources"], correct: 1 },
-];
+const demoQuestions = questionBank;
 
 function SourcePanel({ sources, setSources, onClose }) {
   const [title, setTitle] = useState("");
