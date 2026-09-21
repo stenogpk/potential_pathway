@@ -7,7 +7,7 @@ import {
 import "./styles.css";
 import { missions } from "./data/missions";
 import { calculateMarks, createRevisionCard, getMissionMarking, nextRevision, questionBank } from "./data/questions";
-import { getDueRevisions, revisionSummary, scheduleRevision } from "./data/revision";
+import { getDueRevisions, scheduleRevision } from "./data/revision";
 import { calculateReadiness, topicAccuracy } from "./data/readiness";
 import { loadState, saveState } from "./lib/storage";
 
