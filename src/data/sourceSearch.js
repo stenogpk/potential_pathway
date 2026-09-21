@@ -1,0 +1,1 @@
+export function searchSources(sources, query, missionId = null) { const q = query.trim().toLowerCase(); return sources.filter((s) => (!missionId || s.missionId === missionId) && (!q || [s.title,s.fileName,s.authority,s.type,s.status].filter(Boolean).some((v)=>v.toLowerCase().includes(q)))); }
