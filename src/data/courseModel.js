@@ -13,7 +13,10 @@ export const courseEntitySchema = {
     title: "string",
     type: "official-pdf | reference | notes | other",
     authority: "official | user-provided | secondary",
-    status: "pending | indexed | active | archived",
+    status: "pending | file-selected | indexed | active | archived",
+    fileName: "string | null",
+    fileSize: "number | null",
+    mimeType: "string | null",
   },
   subject: {
     id: "string",
