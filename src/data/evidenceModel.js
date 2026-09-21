@@ -108,3 +108,5 @@ export function rankEvidenceSources(sources = [], claimType = "default") {
     (a, b) => order.indexOf(getEvidenceLayer(a)) - order.indexOf(getEvidenceLayer(b))
   );
 }
+
+// Course Engine v2: evidence policy remains claim-aware and source-first.
