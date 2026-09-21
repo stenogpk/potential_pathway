@@ -241,7 +241,7 @@ function SourcePanel({ sources, setSources, onClose }) {
   const add = () => {
     const clean = title.trim();
     if (!clean) return;
-    setSources((current) => [{ id: crypto.randomUUID(), title: clean, missionId, status: "pending", addedAt: Date.now() }, ...current]);
+    setSources((current) => [{ id: crypto.randomUUID(), title: clean, missionId, type: "reference", authority: "user-provided", status: "pending", sourceRefs: [], addedAt: Date.now() }, ...current]);
     setTitle("");
   };
   return <div className="tool-overlay"><div className="tool-card">
