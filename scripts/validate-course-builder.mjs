@@ -4,7 +4,7 @@ import { courseGenerationGate } from "../src/data/courseGenerationGate.js";
 import { courseSectionNames } from "../src/data/courseContent.js";
 
 const chunks = [
-  { id: "c1", sourceId: "s1", missionId: "pcs", locator: "notes.md#1", text: "Federal features of the Constitution.", order: 0 },
+  { id: "c1", sourceId: "s1", missionId: "pcs", locator: "notes.md#1", text: "Federal features of the Constitution were established in 1950.", order: 0 },
   { id: "c2", sourceId: "s2", missionId: "pcs", locator: "notes.md#2", text: "Parliamentary procedure.", order: 1 },
   { id: "c3", sourceId: "s1", missionId: "pcs", locator: "notes.md#3", text: "The term began in 1950.", order: 2 },
 ];
