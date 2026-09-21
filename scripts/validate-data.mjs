@@ -1,4 +1,5 @@
 import { emptyCourse, courseEntitySchema } from "../src/data/courseModel.js";
+import { sourceSchema } from "../src/data/sourceModel.js";
 import { questionSchema, attemptSchema, revisionSchema } from "../src/data/questions.js";
 import { missions } from "../src/data/missions.js";
 
@@ -8,7 +9,7 @@ const required = (obj, keys, label) => {
   }
 };
 
-required(courseEntitySchema.source, ["id","missionId","title","type","authority","status"], "source schema");
+required(sourceSchema, ["id","missionId","title","type","authority","status"], "source schema");
 required(courseEntitySchema.subject, ["id","missionId","name","weight"], "subject schema");
 required(courseEntitySchema.topic, ["id","subjectId","name","sourceRefs","status"], "topic schema");
 required(courseEntitySchema.subtopic, ["id","topicId","name","core","crux","sourceRefs"], "subtopic schema");
