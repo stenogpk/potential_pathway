@@ -2,7 +2,7 @@ name: PP CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, source-grounded-engine-v1]
   pull_request:
     branches: [main]
 
@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - run: npm run build
+      - run: npm build
 
   repository-smoke:
     name: Repository smoke check
