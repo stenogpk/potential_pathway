@@ -25,3 +25,18 @@ export function revisionSummary(revisions, now = Date.now()) {
     overdue: due.filter((r) => r.dueAt < now - 24 * 60 * 60 * 1000).length,
   };
 }
+
+
+export function nextDueRevision(revisions, now = Date.now()) {
+  return [...revisions].filter((r) => r.dueAt > now).sort((a, b) => a.dueAt - b.dueAt)[0] || null;
+}
+
+export function revisionLoad(revisions, now = Date.now()) {
+  const due = getDueRevisions(revisions, now);
+  const overdue = due.filter((r) => r.dueAt < now - 24 * 60 * 60 * 1000).length;
+  return {
+    due: due.length,
+    overdue,
+    nextDueAt: nextDueRevision(revisions, now)?.dueAt || null,
+  };
+}
