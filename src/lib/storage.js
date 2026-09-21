@@ -9,8 +9,9 @@ export const initialState = {
   attempts: [],
   revisions: [],
   courseNodes: [],
+  externalVerificationRequests: [],
   activeMission: "dashboard",
-  version: 4,
+  version: 7,
 };
 
 export function normalizeSources(sources) {
@@ -24,6 +25,9 @@ export function normalizeSources(sources) {
       fileName: source.fileName ?? null,
       fileSize: source.fileSize ?? null,
       mimeType: source.mimeType ?? null,
+      url: source.url ?? null,
+      publisher: source.publisher ?? null,
+      verification: source.verification ?? null,
     }));
 }
 
@@ -44,7 +48,8 @@ export function saveState(state) {
     contentChunks: Array.isArray(state.contentChunks) ? state.contentChunks : [],
     courseContent: Array.isArray(state.courseContent) ? state.courseContent : [],
     groundedQuestions: Array.isArray(state.groundedQuestions) ? state.groundedQuestions : [],
-    version: 6,
+    externalVerificationRequests: Array.isArray(state.externalVerificationRequests) ? state.externalVerificationRequests : [],
+    version: 7,
   }));
 }
 
@@ -67,6 +72,7 @@ export function migrateStudyState(parsed) {
     contentChunks: Array.isArray(parsed.contentChunks) ? parsed.contentChunks : [],
     courseContent: Array.isArray(parsed.courseContent) ? parsed.courseContent : [],
     groundedQuestions: Array.isArray(parsed.groundedQuestions) ? parsed.groundedQuestions : [],
+    externalVerificationRequests: Array.isArray(parsed.externalVerificationRequests) ? parsed.externalVerificationRequests : [],
     attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
     revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [],
     courseNodes: Array.isArray(parsed.courseNodes) ? parsed.courseNodes : [],
