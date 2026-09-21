@@ -34,6 +34,38 @@ export function calculateMarks(isCorrect, marking = { correct: 1, wrong: 0 }) {
   return isCorrect ? marking.correct : marking.wrong;
 }
 
+export function getMissionMarking(missionId) {
+  return missionMarking[missionId] || { correct: 1, wrong: 0 };
+}
+
+export function createRevisionCard({ missionId, topicId, sourceRefs = [], dueAt = Date.now(), intervalDays = 1, lastResult = null }) {
+  return {
+    id: crypto.randomUUID(),
+    missionId,
+    topicId,
+    sourceRefs,
+    dueAt,
+    intervalDays,
+    ease: 2.5,
+    repetitions: 0,
+    lastResult,
+    createdAt: Date.now(),
+  };
+}
+
+export function nextRevision(card, isCorrect) {
+  const interval = isCorrect
+    ? Math.max(1, Math.round(card.intervalDays * (card.repetitions ? 2.5 : 2)))
+    : 1;
+  return {
+    ...card,
+    dueAt: Date.now() + interval * 24 * 60 * 60 * 1000,
+    intervalDays: interval,
+    repetitions: isCorrect ? card.repetitions + 1 : 0,
+    lastResult: isCorrect ? "correct" : "incorrect",
+  };
+}
+
 export const revisionSchema = {
   id: "string",
   missionId: "string",
