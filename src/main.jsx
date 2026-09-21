@@ -274,3 +274,10 @@ function Stat({ icon: Icon, label, value, note }) {
 }
 
 createRoot(document.getElementById("root")).render(<App />);
+
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/potential_pathway/sw.js").catch(() => {});
+  });
+}
