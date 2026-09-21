@@ -13,9 +13,9 @@ export const MASTERED_REPETITIONS = 5;
 export const STABLE_REPETITIONS = 3;
 
 export function getRevisionState(card = {}, now = Date.now()) {
-  if (!card.lastResult && !(card.repetitions > 0)) return "new";
   if (card.lastResult === "incorrect") return "weak-error";
   if (card.dueAt && card.dueAt <= now) return "due";
+  if (!card.lastResult && !(card.repetitions > 0)) return "new";
   if (card.repetitions >= MASTERED_REPETITIONS) return "mastered";
   if (card.repetitions >= STABLE_REPETITIONS) return "stable";
   if (card.repetitions > 0) return "re-tested";
