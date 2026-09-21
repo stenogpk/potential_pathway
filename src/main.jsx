@@ -336,6 +336,7 @@ function ReadinessPanel({ sessions, attempts, revisions, courseNodes, activeMiss
 function RevisionPanel({ revisions, courseNodes, setState, onClose }) {
   const [index, setIndex] = useState(0);
   const due = getDueRevisions(revisions).sort((a, b) => a.dueAt - b.dueAt);
+  const overdue = revisions.filter((r) => r.dueAt < Date.now() - 24 * 60 * 60 * 1000).length;
   const card = due[index];
   const topic = card ? courseNodes.find((n) => n.id === card.topicId || n.id === card.topicId)?.name : null;
   const review = (isCorrect) => {
@@ -351,7 +352,7 @@ function RevisionPanel({ revisions, courseNodes, setState, onClose }) {
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">REVIEW QUEUE</p><h2>Due revision cards</h2>
     {card ? <>
-      <div className="question-meta">{index + 1} / {due.length} due · {card.missionId}</div>
+      <div className="question-meta">{index + 1} / {due.length} due · {overdue} overdue · {card.missionId}</div>
       <h3>{topic || card.topicId}</h3>
       <p className="muted">Revision card due {new Date(card.dueAt).toLocaleString("en-IN")} · interval {card.intervalDays} day(s).</p>
       <div className="session-controls">
