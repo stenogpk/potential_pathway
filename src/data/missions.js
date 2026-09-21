@@ -55,14 +55,22 @@ export const emptyMissionProgress = {
   totalTopics: 0,
 };
 
-export function missionProgress(sessions, missionId) {
+export function missionProgress(sessions, missionId, attempts = [], revisions = [], courseNodes = []) {
   const rows = sessions.filter((s) => s.missionId === missionId);
+  const missionAttempts = attempts.filter((a) => a.missionId === missionId);
+  const missionRevisions = revisions.filter((r) => r.missionId === missionId);
+  const missionNodes = courseNodes.filter((n) => n.missionId === missionId);
   const actualSeconds = rows.reduce((sum, s) => sum + (s.actualSeconds || 0), 0);
+  const mcqCorrect = missionAttempts.filter((a) => a.isCorrect).length;
   return {
     ...emptyMissionProgress,
     minutes: Math.floor(actualSeconds / 60),
     sessions: rows.length,
-    mcqAttempts: 0,
-    mcqCorrect: 0,
+    mcqAttempts: missionAttempts.length,
+    mcqCorrect,
+    accuracy: missionAttempts.length ? Math.round((mcqCorrect / missionAttempts.length) * 100) : null,
+    revisionDue: missionRevisions.filter((r) => r.dueAt <= Date.now()).length,
+    completedTopics: missionNodes.filter((n) => n.status === "completed").length,
+    totalTopics: missionNodes.filter((n) => n.kind === "topic").length,
   };
 }
