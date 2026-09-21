@@ -116,3 +116,23 @@ export const questionBank = [
     tags: ["product-demo"],
   },
 ];
+
+
+export function questionsForMission(questions, missionId) {
+  return questions.filter((question) => question.missionId === missionId);
+}
+
+export function questionsForTopic(questions, topicId) {
+  return questions.filter((question) => question.topicId === topicId);
+}
+
+export function attemptSummary(attempts, missionId = null) {
+  const rows = missionId ? attempts.filter((attempt) => attempt.missionId === missionId) : attempts;
+  const correct = rows.filter((attempt) => attempt.isCorrect).length;
+  return {
+    attempts: rows.length,
+    correct,
+    accuracy: rows.length ? Math.round((correct / rows.length) * 100) : null,
+    marks: rows.reduce((sum, attempt) => sum + (attempt.marks || 0), 0),
+  };
+}
