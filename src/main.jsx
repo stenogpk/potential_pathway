@@ -8,7 +8,7 @@ import "./styles.css";
 import { missions } from "./data/missions";
 import { calculateMarks, createRevisionCard, getMissionMarking, nextRevision, questionBank } from "./data/questions";
 import { getDueRevisions, revisionSummary } from "./data/revision";
-import { calculateReadiness } from "./data/readiness";
+import { calculateReadiness, topicAccuracy } from "./data/readiness";
 import { loadState, saveState } from "./lib/storage";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
@@ -139,7 +139,7 @@ function App() {
 
       {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} onClose={() => setPanel(null)} />}
       {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} onClose={() => setPanel(null)} />}
-      {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} onClose={() => setPanel(null)} />}
+      {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} setState={setState} onClose={() => setPanel(null)} />}
       {session && (
         <div className="session-overlay">
@@ -300,16 +300,31 @@ function McqPanel({ questionState, setQuestionState, setState, onClose }) {
   </div></div>;
 }
 
-function ReadinessPanel({ sessions, attempts, onClose }) {
-  const mins=Math.floor(sessions.reduce((a,s)=>a+(s.actualSeconds||0),0)/60);
-  const total=attempts.length;
-  const correct=attempts.filter((a)=>a.isCorrect).length;
-  const accuracy=total ? Math.round(correct/total*100) : null;
-  const dueCount = getDueRevisions([]).length;
+function ReadinessPanel({ sessions, attempts, revisions, courseNodes, activeMission, onClose }) {
+  const [missionId, setMissionId] = useState(activeMission);
+  const readiness = calculateReadiness({ sessions, attempts, revisions, courseNodes, missionId });
+  const topicRows = topicAccuracy(attempts, missionId).filter((row) => row.attempts > 0).sort((a, b) => a.accuracy - b.accuracy);
+  const mission = missions.find((m) => m.id === missionId);
   return <div className="tool-overlay"><div className="tool-card readiness-card">
-    <button className="close-session" onClick={onClose}><X /></button><p className="eyebrow">READINESS SNAPSHOT</p><h2>What your data says</h2>
-    <div className="readiness-grid"><div><span>Study logged</span><b>{mins} min</b></div><div><span>MCQ attempts</span><b>{total}</b></div><div><span>Accuracy</span><b>{accuracy === null ? "—" : accuracy+"%"}</b></div></div>
-    <p className="muted">This is an early instrument, not an exam prediction. Accuracy comes from persisted MCQ attempts.</p>
+    <button className="close-session" onClick={onClose}><X /></button>
+    <p className="eyebrow">READINESS SNAPSHOT</p><h2>{mission?.title || "Mission"} data</h2>
+    <div className="form-row">
+      <select value={missionId} onChange={(e) => setMissionId(e.target.value)}>
+        {missions.filter((m) => m.status === "active").map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
+      </select>
+    </div>
+    <div className="readiness-grid">
+      <div><span>Study logged</span><b>{readiness.studyMinutes} min</b></div>
+      <div><span>MCQ attempts</span><b>{readiness.attempts}</b></div>
+      <div><span>Accuracy</span><b>{readiness.accuracy === null ? "—" : readiness.accuracy+"%"}</b></div>
+      <div><span>Revision due</span><b>{readiness.revisionDue}</b></div>
+      <div><span>Topics completed</span><b>{readiness.completedTopics}/{readiness.totalTopics || 0}</b></div>
+    </div>
+    {topicRows.length > 0 && <div className="source-list">
+      <div className="eyebrow">TOPIC SIGNALS</div>
+      {topicRows.slice(0, 5).map((row) => <div className="source-item" key={row.topicId}><BarChart3 size={18}/><div><b>{row.topicId}</b><span>{row.accuracy}% accuracy · {row.attempts} attempts</span></div></div>)}
+    </div>}
+    <p className="muted">This is an early instrument, not an exam prediction. It summarizes persisted study, practice, revision and course data.</p>
   </div></div>;
 }
 function CoursePanel({ nodes, setNodes, revisions, setState, onClose }) {
