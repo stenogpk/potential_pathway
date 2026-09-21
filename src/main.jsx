@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import { missions } from "./data/missions";
-import { calculateMarks, questionBank } from "./data/questions";
+import { calculateMarks, createRevisionCard, getMissionMarking, nextRevision, questionBank } from "./data/questions";
 import { loadState, saveState } from "./lib/storage";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
@@ -261,7 +261,7 @@ function McqPanel({ questionState, setQuestionState, setState, onClose }) {
       topicId: q.topicId,
       selectedOptionId: optionId,
       isCorrect,
-      marks: calculateMarks(isCorrect),
+      marks: calculateMarks(isCorrect, getMissionMarking(q.missionId)),
       timeSeconds: 0,
       attemptedAt: Date.now(),
     };
@@ -271,7 +271,16 @@ function McqPanel({ questionState, setQuestionState, setState, onClose }) {
       attempts: s.attempts + 1,
       score: s.score + (isCorrect ? 1 : 0),
     }));
-    setState((current) => ({ ...current, attempts: [attempt, ...(current.attempts || [])].slice(0, 1000) }));
+    setState((current) => {
+      const existing = (current.revisions || []).find((r) => r.missionId === q.missionId && r.topicId === q.topicId);
+      const base = existing || createRevisionCard({ missionId: q.missionId, topicId: q.topicId, sourceRefs: q.sourceRefs });
+      const revision = nextRevision(base, isCorrect);
+      return {
+        ...current,
+        attempts: [attempt, ...(current.attempts || [])].slice(0, 1000),
+        revisions: [revision, ...(current.revisions || []).filter((r) => r.id !== revision.id)].slice(0, 1000),
+      };
+    });
   };
   const next = () => setQuestionState((s) => ({
     ...s,
