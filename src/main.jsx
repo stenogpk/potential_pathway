@@ -134,12 +134,12 @@ function App() {
         </header>
 
         {active === "dashboard"
-          ? <Dashboard onStart={startSession} completed={completed} todayMinutes={todayMinutes} sessionCount={todaySessions.length} sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} />
+          ? <Dashboard onStart={startSession} completed={completed} todayMinutes={todayMinutes} sessionCount={todaySessions.length} todayAttempts={todayAttempts} todayCorrect={todayCorrect} sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} />
           : <Mission mission={selectedMission} onStart={startSession} sessions={state.sessions.filter((s) => s.missionId === selectedMission.id)} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} />}
       </main>
 
       {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} onClose={() => setPanel(null)} />}
-      {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} onClose={() => setPanel(null)} />}
+      {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} missionId={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "revision" && <RevisionPanel revisions={state.revisions} courseNodes={courseNodes} setState={setState} onClose={() => setPanel(null)} />}
@@ -169,7 +169,7 @@ function formatTime(seconds) {
   return `${m}:${s}`;
 }
 
-function Dashboard({ onStart, completed, todayMinutes, sessionCount, sessions, attempts, revisions, courseNodes }) {
+function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttempts, todayCorrect, sessions, attempts, revisions, courseNodes }) {
   return <div className="content">
     <section className="hero-card">
       <div>
@@ -255,8 +255,9 @@ function SourcePanel({ sources, setSources, onClose }) {
   </div></div>;
 }
 
-function McqPanel({ questionState, setQuestionState, setState, onClose }) {
-  const q = demoQuestions[questionState.index];
+function McqPanel({ questionState, setQuestionState, setState, missionId, onClose }) {
+  const missionQuestions = demoQuestions.filter((item) => item.missionId === missionId);
+  const q = missionQuestions.length ? missionQuestions[questionState.index % missionQuestions.length] : null;
   const answered = questionState.selected !== null;
   const choose = (optionId) => {
     if (answered) return;
@@ -290,15 +291,16 @@ function McqPanel({ questionState, setQuestionState, setState, onClose }) {
       };
     });
   };
+  if (!q) return <div className="tool-overlay"><div className="tool-card"><button className="close-session" onClick={onClose}><X /></button><p className="eyebrow">PRACTICE ENGINE</p><h2>No questions configured</h2><p className="muted">This mission needs source-backed questions before practice can begin.</p></div></div>;
   const next = () => setQuestionState((s) => ({
     ...s,
-    index: (s.index + 1) % demoQuestions.length,
+    index: (s.index + 1) % Math.max(1, missionQuestions.length),
     selected: null
   }));
   return <div className="tool-overlay"><div className="tool-card">
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2>
-    <div className="question-meta">Question {questionState.index + 1} / {demoQuestions.length} · Score {questionState.score}/{questionState.attempts}</div>
+    <div className="question-meta">Question {questionState.index + 1} / {missionQuestions.length} · Score {questionState.score}/{questionState.attempts}</div>
     <h3>{q.stem}</h3>
     <div className="options">{q.options.map((o)=><button key={o.id} className={answered ? (o.id===q.correctOptionId ? "option correct" : o.id===questionState.selected ? "option wrong" : "option") : "option"} onClick={()=>choose(o.id)}>{o.id.toUpperCase()}. {o.text}</button>)}</div>
     {answered && <div className={questionState.selected===q.correctOptionId ? "answer good" : "answer bad"}>{questionState.selected===q.correctOptionId ? q.explanation : "Not correct — review the explanation/source before moving on."}</div>}
