@@ -479,7 +479,20 @@ function CoursePanel({ nodes, setNodes, revisions, sources, contentChunks, cours
     if (!topic) return;
     const result = buildGroundedCourseDraft({ chunks: contentChunks, missionId, topic });
     if (!result.generated) {
-      setGroundingMessage("No matching source evidence found. Nothing was generated.");
+      if (result.researchRequest) {
+        setState((current) => ({
+          ...current,
+          externalVerificationRequests: [
+            result.researchRequest,
+            ...(current.externalVerificationRequests || []).filter(
+              (item) => item.missionId !== missionId || item.topic !== topic
+            ),
+          ].slice(0, 100),
+        }));
+        setGroundingMessage("PDF/source evidence not found. Added a trusted-external verification request; nothing was generated yet.");
+      } else {
+        setGroundingMessage("No matching source evidence found. Nothing was generated.");
+      }
       return;
     }
     setCourseContent((current) => [
@@ -518,7 +531,7 @@ function CoursePanel({ nodes, setNodes, revisions, sources, contentChunks, cours
     <div className="readiness-grid"><div><span>Course nodes</span><b>{missionNodes.length}</b></div><div><span>Revision cards</span><b>{revisions.filter((r)=>r.missionId===missionId).length}</b></div><div><span>Due now</span><b>{due}</b></div></div>
     <div className="panel" style={{ marginTop: 16 }}>
       <p className="eyebrow">SOURCE-GROUNDED COURSE BUILDER</p>
-      <p className="muted">Builds an evidence draft only from indexed source chunks. No source match means no generation.</p>
+      <p className="muted">Uses indexed PDF/source evidence first. If the PDF does not contain the topic, the app creates a trusted-external verification request instead of inventing content.</p>
       <div className="form-row">
         <input value={groundingTopic} onChange={(e)=>setGroundingTopic(e.target.value)} placeholder="Enter a topic to ground from sources" />
         <button className="primary" onClick={buildGroundedDraft}>Build evidence draft</button>
