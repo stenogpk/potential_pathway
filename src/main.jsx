@@ -45,15 +45,18 @@ function App() {
     const timer = setInterval(() => {
       setSession((current) => {
         if (!current) return null;
-        if (current.remainingSeconds <= 1) {
-          completeSession(current);
-          return null;
-        }
+        if (current.remainingSeconds <= 1) return { ...current, remainingSeconds: 0 };
         return { ...current, remainingSeconds: current.remainingSeconds - 1 };
       });
     }, 1000);
     return () => clearInterval(timer);
   }, [session?.paused]);
+
+  useEffect(() => {
+    if (!session || session.remainingSeconds !== 0) return;
+    completeSession(session);
+    setSession(null);
+  }, [session?.remainingSeconds]);
 
   const completeSession = (finishedSession) => {
     const elapsed = Math.max(0, finishedSession.totalSeconds - finishedSession.remainingSeconds);
