@@ -1,4 +1,7 @@
 import { buildExternalVerificationRequest, getEvidenceLayer, isVerifiedEvidence } from "./evidenceModel.js";
+import { isTrustedExternalUrl } from "./trustedSources.js";
+import { createContentChunk } from "./contentModel.js";
+import { splitTextIntoChunks } from "./textExtractor.js";
 
 export function createExternalSourceRecord({
   missionId,
@@ -10,6 +13,7 @@ export function createExternalSourceRecord({
   const cleanTitle = String(title || "").trim();
   const cleanUrl = String(url || "").trim();
   if (!missionId || !cleanTitle || !cleanUrl) return null;
+  if (authority === "trusted-external" && !isTrustedExternalUrl(cleanUrl)) return null;
 
   return {
     id: crypto.randomUUID(),
@@ -42,7 +46,9 @@ export function buildResearchFallback({ missionId, topic, localContext = [] }) {
 }
 
 export function canUseExternalEvidence(source) {
-  return getEvidenceLayer(source) === "trusted-external" && isVerifiedEvidence(source);
+  return getEvidenceLayer(source) === "trusted-external" &&
+    isVerifiedEvidence(source) &&
+    isTrustedExternalUrl(source.url);
 }
 
 export function markExternalVerification(source, verification = {}) {
@@ -56,4 +62,26 @@ export function markExternalVerification(source, verification = {}) {
       note: String(verification.note || "").trim(),
     },
   };
+}
+
+export function ingestExternalEvidence({ source, text, maxLength = 1400 }) {
+  if (!source || !canUseExternalEvidence(source)) {
+    throw new Error("Only a verified trusted-external source can provide external evidence.");
+  }
+  const parts = splitTextIntoChunks(String(text || ""), { maxLength });
+  if (!parts.length) throw new Error("External source contains no indexable evidence.");
+
+  const chunks = parts.map((part, index) => createContentChunk({
+    id: source.id + ":external-" + (index + 1),
+    sourceId: source.id,
+    missionId: source.missionId,
+    locator: source.url + "#evidence-" + (index + 1),
+    text: part,
+    order: index,
+    evidenceLayer: "trusted-external",
+    sourceUrl: source.url,
+    publisher: source.publisher || null,
+  })).filter(Boolean);
+
+  return { chunks, chunkCount: chunks.length };
 }
