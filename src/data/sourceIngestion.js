@@ -1,5 +1,6 @@
 import { createContentChunk } from "./contentModel.js";
 import { splitTextIntoChunks } from "./textExtractor.js";
+import { ingestPdfSource, isPdfFile } from "./pdfIngestion.js";
 
 export const supportedTextExtensions = [".txt", ".md"];
 
@@ -7,6 +8,8 @@ export function isSupportedTextFile(file) {
   const name = String(file?.name || "").toLowerCase();
   return supportedTextExtensions.some((extension) => name.endsWith(extension));
 }
+
+export { isPdfFile };
 
 export async function extractTextFile(file) {
   if (!isSupportedTextFile(file)) {
@@ -27,10 +30,10 @@ export async function ingestTextSource({ source, file, maxLength = 1200 }) {
   if (!parts.length) throw new Error("No indexable text chunks were produced.");
 
   const chunks = parts.map((text, index) => createContentChunk({
-    id: `${source.id}:chunk-${index + 1}`,
+    id: source.id + ":chunk-" + (index + 1),
     sourceId: source.id,
     missionId: source.missionId,
-    locator: `${source.fileName || file.name}#chunk-${index + 1}`,
+    locator: (source.fileName || file.name) + "#chunk-" + (index + 1),
     text,
     order: index,
   })).filter(Boolean);
@@ -38,3 +41,5 @@ export async function ingestTextSource({ source, file, maxLength = 1200 }) {
   if (!chunks.length) throw new Error("Text extraction produced no valid content chunks.");
   return { chunks, chunkCount: chunks.length };
 }
+
+export { ingestPdfSource };
