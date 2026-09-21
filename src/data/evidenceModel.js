@@ -7,10 +7,10 @@ export const evidenceLayers = [
 ];
 
 export const evidenceLabels = {
-  "user-source": "User PDF / supplied source",
-  official: "Official source",
+  "user-source": "Provided PDF / source",
+  official: "Official external source",
   "trusted-external": "Trusted external source",
-  secondary: "Secondary source",
+  secondary: "Secondary external source",
   "model-only": "Model knowledge — not verified",
 };
 
@@ -20,6 +20,47 @@ export const evidencePriority = {
   "trusted-external": 3,
   secondary: 4,
   "model-only": 99,
+};
+
+export const claimTypes = [
+  "course-content",
+  "exam-fact",
+  "current-fact",
+  "definition",
+  "practice-question",
+];
+
+export const evidencePolicy = {
+  default: {
+    firstChoice: "user-source",
+    fallbackLayers: ["trusted-external", "official", "secondary"],
+    modelAllowed: false,
+  },
+  "course-content": {
+    firstChoice: "user-source",
+    fallbackLayers: ["official", "trusted-external", "secondary"],
+    modelAllowed: false,
+  },
+  "exam-fact": {
+    firstChoice: "user-source",
+    fallbackLayers: ["official", "trusted-external"],
+    modelAllowed: false,
+  },
+  "current-fact": {
+    firstChoice: "user-source",
+    fallbackLayers: ["official", "trusted-external"],
+    modelAllowed: false,
+  },
+  definition: {
+    firstChoice: "user-source",
+    fallbackLayers: ["official", "trusted-external", "secondary"],
+    modelAllowed: false,
+  },
+  "practice-question": {
+    firstChoice: "user-source",
+    fallbackLayers: ["official", "trusted-external"],
+    modelAllowed: false,
+  },
 };
 
 export function getEvidenceLayer(source = {}) {
@@ -35,23 +76,37 @@ export function getEvidenceLabel(source) {
 }
 
 export function isVerifiedEvidence(source) {
-  const layer = getEvidenceLayer(source);
-  return layer !== "model-only";
+  return getEvidenceLayer(source) !== "model-only";
 }
 
-export function buildExternalVerificationRequest({ missionId, topic, reason = "No matching user-supplied source evidence was found." }) {
+export function getEvidencePolicy(claimType = "default") {
+  return evidencePolicy[claimType] || evidencePolicy.default;
+}
+
+export function buildExternalVerificationRequest({
+  missionId,
+  topic,
+  reason = "The provided source does not clearly support this topic or claim.",
+  claimType = "course-content",
+}) {
+  const policy = getEvidencePolicy(claimType);
   return {
     missionId,
     topic: String(topic || "").trim(),
     reason,
-    requiredLayer: "trusted-external",
+    claimType,
+    requiredLayer: policy.fallbackLayers[0] || "trusted-external",
     status: "needs-external-verification",
     createdAt: Date.now(),
   };
 }
 
-export function rankEvidenceSources(sources = []) {
+export function rankEvidenceSources(sources = [], claimType = "default") {
+  const policy = getEvidencePolicy(claimType);
+  const order = [policy.firstChoice, ...policy.fallbackLayers, "model-only"];
   return [...sources].sort(
-    (a, b) => (evidencePriority[getEvidenceLayer(a)] || 99) - (evidencePriority[getEvidenceLayer(b)] || 99)
+    (a, b) => order.indexOf(getEvidenceLayer(a)) - order.indexOf(getEvidenceLayer(b))
   );
 }
+
+// Course Engine v2: evidence policy remains claim-aware and source-first.
