@@ -135,7 +135,7 @@ function App() {
 
         {active === "dashboard"
           ? <Dashboard onStart={startSession} completed={completed} todayMinutes={todayMinutes} sessionCount={todaySessions.length} />
-          : <Mission mission={selectedMission} onStart={startSession} sessions={state.sessions.filter((s) => s.missionId === selectedMission.id)} />}
+          : <Mission mission={selectedMission} onStart={startSession} sessions={state.sessions.filter((s) => s.missionId === selectedMission.id)} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} />}
       </main>
 
       {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} onClose={() => setPanel(null)} />}
@@ -204,9 +204,10 @@ function MissionCard({ mission, onStart }) {
   </article>;
 }
 
-function Mission({ mission, onStart, sessions }) {
+function Mission({ mission, onStart, sessions, attempts, revisions, courseNodes }) {
   const Icon = missionIcons[mission.iconName];
   const minutes = Math.floor(sessions.reduce((sum, s) => sum + s.actualSeconds, 0) / 60);
+  const readiness = calculateReadiness({ sessions, attempts, revisions, courseNodes, missionId: mission.id });
   return <div className="content">
     <section className={`mission-header ${mission.color}`}>
       <div className="mission-icon big"><Icon size={30} /></div>
@@ -223,7 +224,9 @@ function Mission({ mission, onStart, sessions }) {
         <p className="eyebrow">REAL DATA</p>
         <div className="signal"><span>Total logged</span><b>{minutes} min</b></div>
         <div className="signal"><span>Sessions</span><b>{sessions.length}</b></div>
-        <div className="signal"><span>MCQ accuracy</span><b>—</b></div>
+        <div className="signal"><span>MCQ accuracy</span><b>{readiness.accuracy === null ? "—" : `${readiness.accuracy}%`}</b></div>
+        <div className="signal"><span>Revision due</span><b>{readiness.revisionDue}</b></div>
+        <div className="signal"><span>Topics completed</span><b>{readiness.completedTopics}/{readiness.totalTopics || 0}</b></div>
       </section>
     </div>
   </div>;
