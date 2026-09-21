@@ -13,6 +13,8 @@ import { loadState, saveState } from "./lib/storage";
 import { buildStudyPlan } from "./data/planner";
 import { availableSourceStatuses, transitionSource } from "./data/sourceLifecycle.js";
 import { sourceStats } from "./data/sourceStats.js";
+import { prepareSource, createSourceRecord, sourceChunkCount } from "./data/sourceManager.js";
+import { searchSources } from "./data/sourceSearch.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -24,11 +26,12 @@ function App() {
   const [completed, setCompleted] = useState(false);
   const [panel, setPanel] = useState(null);
   const [sources, setSources] = useState(state.sources || []);
+  const [contentChunks, setContentChunks] = useState(state.contentChunks || []);
   const [courseNodes, setCourseNodes] = useState(state.courseNodes || []);
   const [questionState, setQuestionState] = useState({ index: 0, selected: null, score: 0, attempts: 0 });
 
   useEffect(() => {
-    saveState({ ...state, activeMission: active, sources, courseNodes });
+    saveState({ ...state, activeMission: active, sources, contentChunks, courseNodes });
   }, [state, active, sources, courseNodes]);
 
   const selectedMission = useMemo(
@@ -141,7 +144,7 @@ function App() {
           : <Mission mission={selectedMission} onStart={startSession} sessions={state.sessions.filter((s) => s.missionId === selectedMission.id)} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} />}
       </main>
 
-      {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} onClose={() => setPanel(null)} />}
+      {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} contentChunks={contentChunks} setContentChunks={setContentChunks} onClose={() => setPanel(null)} />}
       {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} missionId={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} sources={sources} setState={setState} onClose={() => setPanel(null)} />}
@@ -241,38 +244,83 @@ function Mission({ mission, onStart, sessions, attempts, revisions, courseNodes 
 
 const demoQuestions = questionBank;
 
-function SourcePanel({ sources, setSources, onClose }) {
+function SourcePanel({ sources, setSources, contentChunks, setContentChunks, onClose }) {
   const [title, setTitle] = useState("");
   const [missionId, setMissionId] = useState("pcs");
-  const [fileInfo, setFileInfo] = useState(null);
+  const [file, setFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
   const stats = sourceStats(sources, missionId);
-  const add = () => {
-    const clean = title.trim() || fileInfo?.name;
-    if (!clean) return;
-    setSources((current) => [{
-      id: crypto.randomUUID(), title: clean, missionId,
-      type: fileInfo?.type || "reference", authority: "user-provided",
-      status: fileInfo ? "file-selected" : "pending",
-      fileName: fileInfo?.name || null, fileSize: fileInfo?.size || null,
-      mimeType: fileInfo?.type || null, sourceRefs: [], addedAt: Date.now()
-    }, ...current]);
-    setTitle(""); setFileInfo(null);
+  const missionSources = sources.filter((s) => s.missionId === missionId);
+  const results = searchSources(contentChunks, query, { missionId, limit: 6 });
+
+  const add = async () => {
+    const source = createSourceRecord({ title, missionId, file });
+    if (!source) return;
+    setError("");
+    setBusy(true);
+    try {
+      const prepared = file ? await prepareSource(source, file) : { source, chunks: [], chunkCount: 0, indexed: false };
+      setSources((current) => [prepared.source, ...current]);
+      if (prepared.chunks.length) {
+        setContentChunks((current) => [
+          ...current.filter((chunk) => chunk.sourceId !== prepared.source.id),
+          ...prepared.chunks,
+        ]);
+      }
+      setTitle("");
+      setFile(null);
+      const input = document.getElementById("pp-source-file");
+      if (input) input.value = "";
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Source ingestion failed.");
+    } finally {
+      setBusy(false);
+    }
   };
+
   const move = (source, nextStatus) => setSources((current) =>
     current.map((item) => item.id === source.id ? transitionSource(item, nextStatus) : item)
   );
-  return <div className="tool-overlay"><div className="tool-card">
+
+  return <div className="tool-overlay"><div className="tool-card readiness-card">
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">SOURCE MANAGER</p><h2>Build the source layer</h2>
-    <p className="muted">Source lifecycle is controlled. Parsing/indexing remains a separate engine step.</p>
-    <div className="form-row"><input type="file" accept=".pdf,.txt,.md,.doc,.docx" onChange={(e)=>{const file=e.target.files?.[0];setFileInfo(file?{name:file.name,size:file.size,type:file.type||"reference"}:null);}} />
+    <p className="muted">TXT/Markdown files are indexed locally after successful extraction. Other formats stay file-selected.</p>
+    <div className="form-row">
+      <input id="pp-source-file" type="file" accept=".pdf,.txt,.md,.doc,.docx" onChange={(e)=>setFile(e.target.files?.[0] || null)} />
       <input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
       <select value={missionId} onChange={(e)=>setMissionId(e.target.value)}>{missions.filter(m=>m.status==="active").map(m=><option key={m.id} value={m.id}>{m.title}</option>)}</select>
-      <button className="primary" onClick={add}>Add source</button></div>
-    <div className="readiness-grid"><div><span>Total</span><b>{stats.total}</b></div><div><span>Pending</span><b>{stats.pending}</b></div><div><span>Indexed</span><b>{stats.indexed}</b></div></div>
-    <div className="source-list">{sources.filter(s=>s.missionId===missionId).length?sources.filter(s=>s.missionId===missionId).map(s=>{const next=availableSourceStatuses(s.status)[0];return <div className="source-item" key={s.id}><FileText size={18}/><div><b>{s.title}</b><span>{s.fileName||s.type||"reference"} · {s.status}</span></div>{next&&<button className="secondary" onClick={()=>move(s,next)}>→ {next}</button>}</div>}):<div className="empty-state">No sources added for this mission.</div>}</div>
+      <button className="primary" disabled={busy} onClick={add}>{busy ? "Indexing…" : "Add source"}</button>
+    </div>
+    {error && <div className="answer bad">{error}</div>}
+    <div className="readiness-grid">
+      <div><span>Total</span><b>{stats.total}</b></div>
+      <div><span>Pending</span><b>{stats.pending}</b></div>
+      <div><span>Indexed</span><b>{stats.indexed}</b></div>
+      <div><span>Chunks</span><b>{contentChunks.filter((chunk) => chunk.missionId === missionId).length}</b></div>
+    </div>
+    <div className="form-row">
+      <input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search indexed source text…" />
+    </div>
+    {query.trim() && <div className="source-list">
+      <div className="eyebrow">SOURCE SEARCH · {results.length} result{results.length === 1 ? "" : "s"}</div>
+      {results.length ? results.map((result) => <div className="source-item" key={result.id}><FileText size={18}/><div><b>{missionSources.find((s)=>s.id===result.sourceId)?.title || result.sourceId}</b><span>{result.locator} · score {result.score}</span><p>{result.text}</p></div></div>) : <div className="empty-state">No indexed source text matched this search.</div>}
+    </div>}
+    <div className="source-list">
+      {missionSources.length ? missionSources.map((s) => {
+        const next = availableSourceStatuses(s.status)[0];
+        const chunks = sourceChunkCount(contentChunks, s.id);
+        return <div className="source-item" key={s.id}>
+          <FileText size={18}/><div><b>{s.title}</b><span>{s.fileName || s.type || "reference"} · {s.status} · {chunks} chunk{chunks === 1 ? "" : "s"}</span></div>
+          {next && <button className="secondary" onClick={()=>move(s,next)}>→ {next}</button>}
+        </div>;
+      }) : <div className="empty-state">No sources added for this mission.</div>}
+    </div>
   </div></div>;
 }
+
 function McqPanel({ questionState, setQuestionState, setState, missionId, onClose }) {
   const [difficulty, setDifficulty] = useState("all");
   const [topicId, setTopicId] = useState("all");
