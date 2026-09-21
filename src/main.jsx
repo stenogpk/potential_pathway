@@ -382,7 +382,7 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2><p className="muted">{isGroundedMode ? "Source-grounded questions are active." : "No verified questions are loaded. Trusted external verification is required before new exam content is admitted."}</p>
     <div className="form-row mcq-filters"><select value={difficulty} onChange={(e)=>{setDifficulty(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All difficulty</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><select value={topicId} onChange={(e)=>{setTopicId(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All topics</option>{topicOptions.map((id)=><option key={id} value={id}>{id}</option>)}</select></div>
-    <div className="question-meta">Question {questionState.index + 1} / {missionQuestions.length} · Score {questionState.score}/{questionState.attempts}</div>
+    <div className="question-meta">Question {questionState.index + 1} / {missionQuestions.length} · Score {questionState.score}/{questionState.attempts} · {getEvidenceLabel(sources.find((source) => source.id === q.sourceRefs?.[0]) || {})}</div>
     <h3>{q.stem}</h3>
     <div className="options">{q.options.map((o)=><button key={o.id} className={answered ? (o.id===q.correctOptionId ? "option correct" : o.id===questionState.selected ? "option wrong" : "option") : "option"} onClick={()=>choose(o.id)}>{o.id.toUpperCase()}. {o.text}</button>)}</div>
     {answered && <div className={questionState.selected===q.correctOptionId ? "answer good" : "answer bad"}>{questionState.selected===q.correctOptionId ? q.explanation : "Not correct — review the explanation/source before moving on."}</div>}
@@ -540,7 +540,7 @@ function CoursePanel({ nodes, setNodes, revisions, sources, contentChunks, cours
       {groundingMessage && <p className="muted">{groundingMessage}</p>}
       {missionCourseContent.length > 0 && <div className="source-list">
         {missionCourseContent.map((item) => <div className="source-item" key={item.id}>
-          <FileText size={18}/><div><b>{item.title}</b><span>{item.kind} · source {item.sourceRefs.join(", ")}</span><p>{item.body}</p></div>
+          <FileText size={18}/><div><b>{item.title}</b><span>{item.kind} · source {item.sourceRefs.join(", ")} · {(item.evidenceLayers || ["user-source"]).join(", ")}</span><p>{item.body}</p></div>
         </div>)}
       </div>}
     </div>
