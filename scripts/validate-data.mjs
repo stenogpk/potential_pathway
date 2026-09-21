@@ -1,6 +1,8 @@
 import { emptyCourse, courseEntitySchema } from "../src/data/courseModel.js";
 import { questionSchema, attemptSchema, revisionSchema } from "../src/data/questions.js";
 import { missions } from "../src/data/missions.js";
+import { sourceStatuses, sourceTypes } from "../src/data/sourceModel.js";
+import { contentIndexSchema } from "../src/data/contentIndex.js";
 
 const required = (obj, keys, label) => {
   for (const key of keys) {
@@ -15,6 +17,9 @@ required(courseEntitySchema.subtopic, ["id","topicId","name","core","crux","sour
 required(questionSchema, ["id","missionId","subjectId","topicId","sourceRefs","stem","options","correctOptionId","explanation","difficulty","tags"], "question schema");
 required(attemptSchema, ["id","questionId","missionId","selectedOptionId","isCorrect","timeSeconds","attemptedAt"], "attempt schema");
 required(revisionSchema, ["id","missionId","topicId","sourceRefs","dueAt","intervalDays","ease","repetitions","lastResult"], "revision schema");
+if (!sourceStatuses.includes("indexed") || !sourceStatuses.includes("active")) throw new Error("Source lifecycle is incomplete.");
+if (!sourceTypes.includes("official-pdf")) throw new Error("Source types are incomplete.");
+required(contentIndexSchema, ["sourceId","missionId","page","heading","text","contentType","createdAt"], "content index schema");
 
 if (!Array.isArray(missions) || missions.length < 2) {
   throw new Error("Expected at least two configured missions.");
