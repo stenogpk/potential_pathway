@@ -1,14 +1,19 @@
+export const questionTypes = ["concept", "fact", "application", "pyq"];
+
 export const questionSchema = {
   id: "string",
   missionId: "string",
   subjectId: "string",
   topicId: "string",
+  questionType: "concept | fact | application | pyq",
   sourceRefs: [],
   stem: "",
   options: [],
   correctOptionId: "",
   explanation: "",
   difficulty: "easy | medium | hard",
+  pyq: { year: null, exam: "", paper: "" },
+  marking: { correct: 1, wrong: 0, unanswered: 0 },
   tags: [],
 };
 
@@ -20,22 +25,71 @@ export const attemptSchema = {
   topicId: "string",
   selectedOptionId: null,
   isCorrect: false,
+  isUnanswered: false,
   marks: 0,
   timeSeconds: 0,
   attemptedAt: 0,
+  errorType: null,
+  revisionId: null,
 };
 
 export const missionMarking = {
   pcs: null,
-  chemistry: { correct: 3, wrong: -1 },
+  chemistry: { correct: 3, wrong: -1, unanswered: 0 },
 };
 
-export function calculateMarks(isCorrect, marking = { correct: 1, wrong: 0 }) {
+export function getMissionMarking(missionId) {
+  return missionMarking[missionId] || { correct: 1, wrong: 0, unanswered: 0 };
+}
+
+export function getQuestionMarking(question, missionId) {
+  const mission = getMissionMarking(missionId);
+  return {
+    correct: Number.isFinite(question?.marking?.correct) ? question.marking.correct : mission.correct,
+    wrong: Number.isFinite(question?.marking?.wrong) ? question.marking.wrong : mission.wrong,
+    unanswered: Number.isFinite(question?.marking?.unanswered) ? question.marking.unanswered : mission.unanswered,
+  };
+}
+
+export function calculateMarks(isCorrect, marking = { correct: 1, wrong: 0 }, isUnanswered = false) {
+  if (isUnanswered) return marking.unanswered ?? 0;
   return isCorrect ? marking.correct : marking.wrong;
 }
 
-export function getMissionMarking(missionId) {
-  return missionMarking[missionId] || { correct: 1, wrong: 0 };
+export function scoreQuestionAttempt(question, selectedOptionId) {
+  const marking = getQuestionMarking(question, question?.missionId);
+  const isUnanswered = !selectedOptionId;
+  const isCorrect = !isUnanswered && selectedOptionId === question.correctOptionId;
+  return {
+    isCorrect,
+    isUnanswered,
+    marks: calculateMarks(isCorrect, marking, isUnanswered),
+  };
+}
+
+export function createAttemptRecord({
+  question,
+  selectedOptionId = null,
+  timeSeconds = 0,
+  revisionId = null,
+  errorType = null,
+  attemptedAt = Date.now(),
+}) {
+  if (!question?.id) return null;
+  const result = scoreQuestionAttempt(question, selectedOptionId);
+  return {
+    id: crypto.randomUUID(),
+    questionId: question.id,
+    missionId: question.missionId,
+    subjectId: question.subjectId || "",
+    topicId: question.topicId,
+    selectedOptionId,
+    ...result,
+    timeSeconds,
+    attemptedAt,
+    errorType: result.isCorrect ? null : errorType || "knowledge-gap",
+    revisionId,
+  };
 }
 
 export function createRevisionCard({ missionId, topicId, sourceRefs = [], dueAt = Date.now(), intervalDays = 1, lastResult = null }) {
@@ -116,7 +170,6 @@ export const questionBank = [
     tags: ["product-demo"],
   },
 ];
-
 
 export function questionsForMission(questions, missionId) {
   return questions.filter((question) => question.missionId === missionId);
