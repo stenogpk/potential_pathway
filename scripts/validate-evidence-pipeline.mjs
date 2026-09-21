@@ -23,5 +23,5 @@ if (ranked[0].id !== "u1" || ranked[1].id !== "o1") throw new Error("Course-cont
 const currentRanked = rankEvidenceSources([officialSource, userSource, verified], "current-fact");
 if (currentRanked[0].id !== "u1" || currentRanked[1].id !== "o1") throw new Error("Current-fact source-first policy failed.");
 const request = buildExternalVerificationRequest({ missionId: "pcs", topic: "economy" });
-if (request.requiredLayer !== "trusted-external") throw new Error("Fallback layer failed.");
+if (request.requiredLayer !== "official") throw new Error("Fallback layer failed: course-content should prefer official external verification.");
 console.log("Evidence pipeline validation passed.");
