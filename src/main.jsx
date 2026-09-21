@@ -268,7 +268,7 @@ function SourcePanel({ sources, setSources, setState, onClose, courseNodes = [] 
       addedAt: Date.now()
     };
     setSources((current) => [source, ...current]);
-    if (fileInfo?.file && /\\.(txt|md)$/i.test(fileInfo.name)) {
+    if (fileInfo?.file && /\.(txt|md)$/i.test(fileInfo.name)) {
       const text = normalizeExtractedText(await fileInfo.file.text());
       if (text) {
         setState((current) => ({
