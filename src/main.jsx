@@ -171,6 +171,7 @@ function formatTime(seconds) {
 }
 
 function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttempts, todayCorrect, sessions, attempts, revisions, courseNodes }) {
+  const planner = buildStudyPlan({ missionId: "pcs", availableMinutes: 50, sessions, attempts, revisions, courseNodes });
   return <div className="content">
     <section className="hero-card">
       <div>
