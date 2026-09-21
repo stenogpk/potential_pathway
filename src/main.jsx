@@ -91,7 +91,7 @@ function App() {
   };
 
   const todaySessions = state.sessions.filter((s) => new Date(s.startedAt).toDateString() === new Date().toDateString());
-  const todayMinutes = Math.floor(todaySessions.reduce((sum, s) => sum + s.actualSeconds, 0) / 60);
+  const todayMinutes = Math.floor(todaySessions.reduce((sum, s) => sum + s.actualSeconds, 0) / 60);\n  const todayAttempts = state.attempts.filter((a) => new Date(a.attemptedAt).toDateString() === new Date().toDateString());\n  const todayCorrect = todayAttempts.filter((a) => a.isCorrect).length;
 
   return (
     <div className="app-shell">
@@ -183,7 +183,7 @@ function Dashboard({ onStart, completed, todayMinutes, sessionCount }) {
     <section className="stats-grid">
       <Stat icon={Clock3} label="Study today" value={`${todayMinutes} min`} note="Recorded locally" />
       <Stat icon={RotateCcw} label="Sessions today" value={sessionCount} note="Real session history" />
-      <Stat icon={Trophy} label="MCQ accuracy" value="—" note="Available after question engine" />
+      <Stat icon={Trophy} label="MCQ accuracy" value={todayAttempts.length ? `${Math.round(todayCorrect / todayAttempts.length * 100)}%` : "—"} note={`${todayAttempts.length} attempts today`} />
     </section>
   </div>;
 }
