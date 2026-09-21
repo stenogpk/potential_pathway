@@ -18,6 +18,7 @@ import { searchSources } from "./data/sourceSearch.js";
 import { buildGroundedCourseDraft } from "./data/courseGeneration.js";
 import { groundedQuestionsForMission, addGroundedQuestion } from "./data/mcqBank.js";
 import { validateGroundedQuestion } from "./data/questionProvenance.js";
+import { getEvidenceLabel } from "./data/evidenceModel.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -122,7 +123,7 @@ function App() {
             return <button key={m.id} className={active === m.id ? "nav-item active" : "nav-item"} onClick={() => setActiveMission(m.id)}><Icon size={19} /> {m.title}</button>;
           })}
         </nav>
-        <div className="sidebar-note"><Brain size={18} /><div><b>AI Pathway</b><span>Source-grounded planning will connect here.</span></div></div>
+        <div className="sidebar-note"><Brain size={18} /><div><b>AI Pathway</b><span>PDF first. Missing evidence triggers trusted external verification.</span></div></div>
         <div className="quick-tools">
           <button onClick={() => setPanel("sources")}><FileText size={16}/> Sources</button>
           <button onClick={() => setPanel("mcq")}><CircleHelp size={16}/> Practice MCQs</button>
@@ -292,7 +293,7 @@ function SourcePanel({ sources, setSources, contentChunks, setContentChunks, onC
   return <div className="tool-overlay"><div className="tool-card readiness-card">
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">SOURCE MANAGER</p><h2>Build the source layer</h2>
-    <p className="muted">TXT/Markdown files are indexed locally after successful extraction. Other formats stay file-selected.</p>
+    <p className="muted">PDF, TXT and Markdown are indexed locally. PDF page numbers are preserved; scanned PDFs require OCR. External evidence is always labeled.</p>
     <div className="form-row">
       <input id="pp-source-file" type="file" accept=".pdf,.txt,.md,.doc,.docx" onChange={(e)=>setFile(e.target.files?.[0] || null)} />
       <input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
@@ -318,7 +319,7 @@ function SourcePanel({ sources, setSources, contentChunks, setContentChunks, onC
         const next = availableSourceStatuses(s.status)[0];
         const chunks = sourceChunkCount(contentChunks, s.id);
         return <div className="source-item" key={s.id}>
-          <FileText size={18}/><div><b>{s.title}</b><span>{s.fileName || s.type || "reference"} · {s.status} · {chunks} chunk{chunks === 1 ? "" : "s"}</span></div>
+          <FileText size={18}/><div><b>{s.title}</b><span>{getEvidenceLabel(s)} · {s.fileName || s.type || "reference"} · {s.status} · {chunks} chunk{chunks === 1 ? "" : "s"}</span></div>
           {next && <button className="secondary" onClick={()=>move(s,next)}>→ {next}</button>}
         </div>;
       }) : <div className="empty-state">No sources added for this mission.</div>}
@@ -332,7 +333,7 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
   const sourceIds = sources.filter((source) => source.missionId === missionId).map((source) => source.id);
   const chunkIds = contentChunks.filter((chunk) => chunk.missionId === missionId).map((chunk) => chunk.id);
   const verifiedQuestions = groundedQuestionsForMission(groundedQuestions, missionId, sourceIds, chunkIds);
-  const baseQuestions = (verifiedQuestions.length ? verifiedQuestions : demoQuestions.filter((item) => item.missionId === missionId));
+  const baseQuestions = verifiedQuestions;
   const isGroundedMode = verifiedQuestions.length > 0;
   const topicOptions = [...new Set(baseQuestions.map((item) => item.topicId))];
   const missionQuestions = baseQuestions.filter((item) => (difficulty === "all" || item.difficulty === difficulty) && (topicId === "all" || item.topicId === topicId));
@@ -378,7 +379,7 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
   }));
   return <div className="tool-overlay"><div className="tool-card">
     <button className="close-session" onClick={onClose}><X /></button>
-    <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2><p className="muted">{isGroundedMode ? "Source-grounded questions are active." : "No verified source-grounded questions are loaded yet; showing product-demo questions only."}</p>
+    <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2><p className="muted">{isGroundedMode ? "Source-grounded questions are active." : "No verified questions are loaded. Trusted external verification is required before new exam content is admitted."}</p>
     <div className="form-row mcq-filters"><select value={difficulty} onChange={(e)=>{setDifficulty(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All difficulty</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><select value={topicId} onChange={(e)=>{setTopicId(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All topics</option>{topicOptions.map((id)=><option key={id} value={id}>{id}</option>)}</select></div>
     <div className="question-meta">Question {questionState.index + 1} / {missionQuestions.length} · Score {questionState.score}/{questionState.attempts}</div>
     <h3>{q.stem}</h3>
