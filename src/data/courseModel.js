@@ -49,3 +49,24 @@ export function createSource({ missionId, title, type = "reference", authority =
     createdAt: Date.now(),
   };
 }
+
+export const courseStatusLabels = {
+  "not-started": "Not started",
+  learning: "Learning",
+  "revision-ready": "Revision ready",
+  completed: "Completed",
+};
+
+export function createCourseNode({ missionId, subjectId = null, topicId = null, name, kind }) {
+  return {
+    id: crypto.randomUUID(),
+    missionId,
+    subjectId,
+    topicId,
+    name,
+    kind,
+    status: "not-started",
+    sourceRefs: [],
+    createdAt: Date.now(),
+  };
+}
