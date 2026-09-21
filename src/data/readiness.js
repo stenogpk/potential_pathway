@@ -32,3 +32,11 @@ export function topicAccuracy(attempts, missionId) {
     accuracy: value.attempts ? Math.round((value.correct / value.attempts) * 100) : null,
   }));
 }
+
+
+export function weakestTopics(attempts, missionId, limit = 5) {
+  return topicAccuracy(attempts, missionId)
+    .filter((row) => row.attempts >= 2)
+    .sort((a, b) => a.accuracy - b.accuracy || b.attempts - a.attempts)
+    .slice(0, limit);
+}
