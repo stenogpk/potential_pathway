@@ -5,27 +5,16 @@ import {
   Flame, LayoutDashboard, Menu, Play, RotateCcw, Target, Trophy, X
 } from "lucide-react";
 import "./styles.css";
+import { missions, missionProgress } from "./data/missions";
+import { initialState, loadState, saveState } from "./lib/storage";
 
-const missions = [
+const missionIcons = { Target, FlaskConical, BookOpen };
+
+/*
   { id: "pcs", title: "PCS / GS", subtitle: "Primary Mission", icon: Target, color: "violet", accent: "Your main preparation pathway", defaultMinutes: 50 },
   { id: "chemistry", title: "PGT Chemistry", subtitle: "Secondary Mission", icon: FlaskConical, color: "cyan", accent: "30 min daily pathway", defaultMinutes: 30 },
   { id: "roaro", title: "RO / ARO", subtitle: "Coming Soon", icon: BookOpen, color: "amber", accent: "Separate syllabus & question bank", defaultMinutes: 50 },
 ];
-
-const STORAGE_KEY = "pp-study-state-v1";
-const initialState = { sessions: [], activeMission: "dashboard" };
-
-function loadState() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || initialState;
-  } catch {
-    return initialState;
-  }
-}
-
-function saveState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-}
 
 function App() {
   const [state, setState] = useState(loadState);
@@ -188,7 +177,7 @@ function Dashboard({ onStart, completed, todayMinutes, sessionCount }) {
 }
 
 function MissionCard({ mission, onStart }) {
-  const Icon = mission.icon;
+  const Icon = missionIcons[mission.iconName];
   return <article className={`mission-card ${mission.color}`}>
     <div className="card-top"><div className="mission-icon"><Icon size={22} /></div><span className="status">{mission.subtitle}</span></div>
     <h3>{mission.title}</h3><p>{mission.accent}</p>
@@ -198,7 +187,7 @@ function MissionCard({ mission, onStart }) {
 }
 
 function Mission({ mission, onStart, sessions }) {
-  const Icon = mission.icon;
+  const Icon = missionIcons[mission.iconName];
   const minutes = Math.floor(sessions.reduce((sum, s) => sum + s.actualSeconds, 0) / 60);
   return <div className="content">
     <section className={`mission-header ${mission.color}`}>
