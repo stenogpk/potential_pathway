@@ -1,11 +1,13 @@
-const STORAGE_KEY = "pp-study-state-v3";
+const STORAGE_KEY = "pp-study-state-v4";
 
 export const initialState = {
   sessions: [],
   sources: [],
   attempts: [],
+  revisions: [],
+  courseNodes: [],
   activeMission: "dashboard",
-  version: 3,
+  version: 4,
 };
 
 export function loadState() {
@@ -18,6 +20,8 @@ export function loadState() {
       sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
       sources: Array.isArray(parsed.sources) ? parsed.sources : [],
       attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
+      revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [],
+      courseNodes: Array.isArray(parsed.courseNodes) ? parsed.courseNodes : [],
     };
   } catch {
     return initialState;
@@ -27,10 +31,15 @@ export function loadState() {
 export function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     ...state,
-    version: 3,
+    version: 4,
   }));
 }
 
 export function clearLocalStudyData() {
   localStorage.removeItem(STORAGE_KEY);
+}
+
+export function upsertRevision(current, revision) {
+  const rows = current.filter((item) => item.id !== revision.id);
+  return [revision, ...rows];
 }
