@@ -5,7 +5,7 @@ import {
   Flame, LayoutDashboard, Menu, Play, RotateCcw, Target, Trophy, X, CircleHelp, BarChart3
 } from "lucide-react";
 import "./styles.css";
-import { missions } from "./data/missions";
+import { missions, missionProgress } from "./data/missions";
 import { calculateMarks, createRevisionCard, getMissionMarking, nextRevision, questionBank } from "./data/questions";
 import { getDueRevisions, scheduleRevision } from "./data/revision";
 import { calculateReadiness, topicAccuracy } from "./data/readiness";
@@ -134,7 +134,7 @@ function App() {
         </header>
 
         {active === "dashboard"
-          ? <Dashboard onStart={startSession} completed={completed} todayMinutes={todayMinutes} sessionCount={todaySessions.length} />
+          ? <Dashboard onStart={startSession} completed={completed} todayMinutes={todayMinutes} sessionCount={todaySessions.length} sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} />
           : <Mission mission={selectedMission} onStart={startSession} sessions={state.sessions.filter((s) => s.missionId === selectedMission.id)} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} />}
       </main>
 
@@ -169,7 +169,7 @@ function formatTime(seconds) {
   return `${m}:${s}`;
 }
 
-function Dashboard({ onStart, completed, todayMinutes, sessionCount }) {
+function Dashboard({ onStart, completed, todayMinutes, sessionCount, sessions, attempts, revisions, courseNodes }) {
   return <div className="content">
     <section className="hero-card">
       <div>
@@ -184,7 +184,7 @@ function Dashboard({ onStart, completed, todayMinutes, sessionCount }) {
     {completed && <div className="success-banner"><CheckCircle2 /> Session recorded. Your study time is saved on this device.</div>}
 
     <div className="section-heading"><div><p className="eyebrow">ACTIVE MISSIONS</p><h2>Your preparation pathways</h2></div><span className="muted">{sessionCount} session{sessionCount === 1 ? "" : "s"} today</span></div>
-    <div className="mission-grid">{missions.map((m) => <MissionCard key={m.id} mission={m} onStart={onStart} />)}</div>
+    <div className="mission-grid">{missions.map((m) => <MissionCard key={m.id} mission={m} onStart={onStart} progress={missionProgress(sessions, m.id, attempts, revisions, courseNodes)} />)}</div>
 
     <section className="stats-grid">
       <Stat icon={Clock3} label="Study today" value={`${todayMinutes} min`} note="Recorded locally" />
@@ -194,12 +194,12 @@ function Dashboard({ onStart, completed, todayMinutes, sessionCount }) {
   </div>;
 }
 
-function MissionCard({ mission, onStart }) {
+function MissionCard({ mission, onStart, progress }) {
   const Icon = missionIcons[mission.iconName];
   return <article className={`mission-card ${mission.color}`}>
     <div className="card-top"><div className="mission-icon"><Icon size={22} /></div><span className="status">{mission.subtitle}</span></div>
     <h3>{mission.title}</h3><p>{mission.accent}</p>
-    <div className="today"><span>Course state</span><b>{mission.id === "roaro" ? "Not activated" : "Source setup pending"}</b></div>
+    <div className="today"><span>{mission.id === "roaro" ? "Course state" : "Progress"}</span><b>{mission.id === "roaro" ? "Not activated" : `${progress.minutes} min · ${progress.mcqAttempts} MCQs`}</b></div>
     {mission.id !== "roaro" && <button className="text-button" onClick={() => onStart(mission.defaultMinutes, mission.id)}>Start mission <ArrowRight size={16} /></button>}
   </article>;
 }
