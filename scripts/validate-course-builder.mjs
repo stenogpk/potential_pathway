@@ -15,8 +15,14 @@ if (!draft.generated || draft.content.length !== 1) throw new Error("Structured 
 const content = draft.content[0];
 if (!validateCourseContentProvenance(content, ["s1", "s2"], ["c1", "c2", "c3"]).valid) throw new Error("Valid course provenance was rejected.");
 if (courseSectionNames.some((name) => !Array.isArray(content.sections[name]))) throw new Error("Course section contract is incomplete.");
-if (!content.sections.core.length || !content.sections.crux.length || !content.sections.mcqTargets.length || !content.sections.revisionPoints.length) {
-  throw new Error("Structured course sections were not populated.");
+if (!content.sections.core.length || !content.sections.mcqTargets.length || !content.sections.revisionPoints.length) {
+  throw new Error("Required structured course sections were not populated.");
+}
+if (content.sections.crux.length || content.sections.details.length) {
+  throw new Error("Test expected only evidence-supported sections to be populated; unsupported sections must remain empty.");
+}
+if (!content.sections.facts.length) {
+  throw new Error("Numeric source evidence was not routed to Facts.");
 }
 if (!content.sourceRefs.includes("s1") || !content.sourceChunkRefs.includes("c1")) throw new Error("Course provenance was not propagated.");
 
