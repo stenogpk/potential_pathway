@@ -4,7 +4,13 @@ import { createCourseContent } from "./courseContent.js";
 export function buildGroundedCourseDraft({ chunks, missionId, topic, limit = 6 }) {
   const grounding = buildCourseGrounding({ chunks, missionId, topic, limit });
   if (!canGenerateGroundedCourse(grounding)) {
-    return { grounding, content: [], generated: false };
+    return {
+      grounding,
+      content: [],
+      generated: false,
+      needsExternalVerification: true,
+      researchRequest: grounding.fallback.request,
+    };
   }
 
   const content = grounding.context.map((item, index) => createCourseContent({
@@ -20,6 +26,8 @@ export function buildGroundedCourseDraft({ chunks, missionId, topic, limit = 6 }
     grounding,
     content,
     generated: content.length > 0,
+    needsExternalVerification: false,
+    researchRequest: null,
   };
 }
 
