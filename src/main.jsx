@@ -242,20 +242,33 @@ const demoQuestions = questionBank;
 function SourcePanel({ sources, setSources, onClose }) {
   const [title, setTitle] = useState("");
   const [missionId, setMissionId] = useState("pcs");
+  const [fileInfo, setFileInfo] = useState(null);
   const add = () => {
-    const clean = title.trim();
+    const clean = title.trim() || fileInfo?.name;
     if (!clean) return;
-    setSources((current) => [{ id: crypto.randomUUID(), title: clean, missionId, type: "reference", authority: "user-provided", status: "pending", sourceRefs: [], addedAt: Date.now() }, ...current]);
+    setSources((current) => [{
+      id: crypto.randomUUID(),
+      title: clean,
+      missionId,
+      type: fileInfo?.type || "reference",
+      authority: "user-provided",
+      status: fileInfo ? "file-selected" : "pending",
+      fileName: fileInfo?.name || null,
+      fileSize: fileInfo?.size || null,
+      sourceRefs: [],
+      addedAt: Date.now()
+    }, ...current]);
     setTitle("");
+    setFileInfo(null);
   };
   return <div className="tool-overlay"><div className="tool-card">
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">SOURCE MANAGER</p><h2>Build the source layer</h2>
-    <p className="muted">Add the official PDF/reference name now. Actual file ingestion will be connected next.</p>
-    <div className="form-row"><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
+    <p className="muted">Select a source file or enter its name. The file metadata is recorded now; parsing/indexing will be connected to the source engine next.</p>
+    <div className="form-row"><input type="file" accept=".pdf,.txt,.md,.doc,.docx" onChange={(e)=>{const file=e.target.files?.[0]; setFileInfo(file ? {name:file.name,size:file.size,type:file.type || "reference"} : null);}} /><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
     <select value={missionId} onChange={(e)=>setMissionId(e.target.value)}>{missions.filter(m=>m.status==="active").map(m=><option key={m.id} value={m.id}>{m.title}</option>)}</select>
     <button className="primary" onClick={add}>Add source</button></div>
-    <div className="source-list">{sources.length ? sources.map(s=><div className="source-item" key={s.id}><FileText size={18}/><div><b>{s.title}</b><span>{missions.find(m=>m.id===s.missionId)?.title} · {s.authority || "user-provided"} · {s.type || "reference"} · {s.status}</span></div></div>) : <div className="empty-state">No sources added yet.</div>}</div>
+    <div className="source-list">{sources.length ? sources.map(s=><div className="source-item" key={s.id}><FileText size={18}/><div><b>{s.title}</b><span>{missions.find(m=>m.id===s.missionId)?.title} · {s.authority || "user-provided"} · {s.fileName || s.type || "reference"} · {s.status}{s.fileSize ? ` · ${Math.ceil(s.fileSize / 1024)} KB` : ""}</span></div></div>) : <div className="empty-state">No sources added yet.</div>}</div>
   </div></div>;
 }
 
