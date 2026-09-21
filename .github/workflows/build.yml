@@ -1,4 +1,4 @@
-name: Build PP
+name: PP CI
 
 on:
   push:
@@ -10,19 +10,46 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  validate-data:
+    name: Validate data models
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - run: npm install
+      - run: npm run validate
 
-      - name: Install dependencies
-        run: npm install
+  production-build:
+    name: Production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run build
 
-      - name: Build
-        run: npm run build
+  repository-smoke:
+    name: Repository smoke check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: node -e "const p=require('./package.json'); if(!p.scripts.build||!p.scripts.validate) process.exit(1); console.log('Package scripts OK')"
+
+  source-tree-check:
+    name: Source tree check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - run: npm run validate
