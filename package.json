@@ -15,7 +15,8 @@
     "validate:source-ingestion": "node scripts/validate-source-ingestion.mjs",
     "validate:source-manager": "node scripts/validate-source-manager.mjs",
     "validate:source-manager-integration": "node scripts/validate-source-manager-integration.mjs",
-    "validate:source-grounding": "node scripts/validate-source-grounding.mjs"
+    "validate:source-grounding": "node scripts/validate-source-grounding.mjs",
+    "validate:course-builder": "node scripts/validate-course-builder.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
