@@ -25,7 +25,7 @@ export const attemptSchema = {
   attemptedAt: 0,
 };
 
-export const revisionSchema = {
+export function calculateMarks(isCorrect, marking = { correct: 1, wrong: 0 }) {\n  return isCorrect ? marking.correct : marking.wrong;\n}\n\nexport const revisionSchema = {
   id: "string",
   missionId: "string",
   topicId: "string",
