@@ -17,7 +17,9 @@
     "validate:source-manager-integration": "node scripts/validate-source-manager-integration.mjs",
     "validate:source-grounding": "node scripts/validate-source-grounding.mjs",
     "validate:course-builder": "node scripts/validate-course-builder.mjs",
-    "validate:source-grounded-mcq": "node scripts/validate-source-grounded-mcq.mjs"
+    "validate:source-grounded-mcq": "node scripts/validate-source-grounded-mcq.mjs",
+    "validate:evidence-pipeline": "node scripts/validate-evidence-pipeline.mjs",
+    "validate:trusted-sources": "node scripts/validate-trusted-sources.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
@@ -25,7 +27,8 @@
     "typescript": "^5.7.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "lucide-react": "^0.468.0"
+    "lucide-react": "^0.468.0",
+    "pdfjs-dist": "^6.3.289"
   },
   "devDependencies": {}
 }

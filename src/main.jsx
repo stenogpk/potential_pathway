@@ -18,6 +18,7 @@ import { searchSources } from "./data/sourceSearch.js";
 import { buildGroundedCourseDraft } from "./data/courseGeneration.js";
 import { groundedQuestionsForMission, addGroundedQuestion } from "./data/mcqBank.js";
 import { validateGroundedQuestion } from "./data/questionProvenance.js";
+import { getEvidenceLabel } from "./data/evidenceModel.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -122,7 +123,7 @@ function App() {
             return <button key={m.id} className={active === m.id ? "nav-item active" : "nav-item"} onClick={() => setActiveMission(m.id)}><Icon size={19} /> {m.title}</button>;
           })}
         </nav>
-        <div className="sidebar-note"><Brain size={18} /><div><b>AI Pathway</b><span>Source-grounded planning will connect here.</span></div></div>
+        <div className="sidebar-note"><Brain size={18} /><div><b>AI Pathway</b><span>PDF first. Missing evidence triggers trusted external verification.</span></div></div>
         <div className="quick-tools">
           <button onClick={() => setPanel("sources")}><FileText size={16}/> Sources</button>
           <button onClick={() => setPanel("mcq")}><CircleHelp size={16}/> Practice MCQs</button>
@@ -181,7 +182,8 @@ function formatTime(seconds) {
 }
 
 function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttempts, todayCorrect, sessions, attempts, revisions, courseNodes, contentChunks }) {
-  const planner = buildStudyPlan({ missionId: "pcs", availableMinutes: 50, sessions, attempts, revisions, courseNodes, contentChunks });
+  const [availableMinutes, setAvailableMinutes] = useState(50);
+  const planner = buildStudyPlan({ missionId: "pcs", availableMinutes, sessions, attempts, revisions, courseNodes, contentChunks });
   return <div className="content">
     <section className="hero-card">
       <div>
@@ -195,7 +197,7 @@ function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttemp
 
     {completed && <div className="success-banner"><CheckCircle2 /> Session recorded. Your study time is saved on this device.</div>}
 
-    <section className="planner-card"><div><p className="eyebrow">NEXT BEST STUDY BLOCK</p><h3>50-minute adaptive plan</h3><p className="muted">The order adapts to due revision, repeated weak topics and unfinished course nodes.</p></div><div className="planner-steps">{planner.plan.map((item, index) => <div className="planner-step" key={`${item.type}-${index}`}><span>{index + 1}</span><div><b>{item.label}</b><small>{item.minutes} min · {item.type}</small></div></div>)}</div></section>
+    <section className="planner-card"><div><p className="eyebrow">NEXT BEST STUDY BLOCK</p><h3>{availableMinutes}-minute adaptive plan</h3><p className="muted">Choose the time you actually have today. The order adapts to due revision, repeated weak topics and unfinished course nodes.</p><div className="session-buttons">{[10,20,30,50,60].map((m) => <button key={m} className="secondary" onClick={() => setAvailableMinutes(m)}>{m} min</button>)}</div></div><div className="planner-steps">{planner.plan.map((item, index) => <div className="planner-step" key={`${item.type}-${index}`}><span>{index + 1}</span><div><b>{item.label}</b><small>{item.minutes} min · {item.type}</small></div></div>)}</div></section>
 
     <div className="section-heading"><div><p className="eyebrow">ACTIVE MISSIONS</p><h2>Your preparation pathways</h2></div><span className="muted">{sessionCount} session{sessionCount === 1 ? "" : "s"} today</span></div>
     <div className="mission-grid">{missions.map((m) => <MissionCard key={m.id} mission={m} onStart={onStart} progress={missionProgress(sessions, m.id, attempts, revisions, courseNodes)} />)}</div>
@@ -292,7 +294,7 @@ function SourcePanel({ sources, setSources, contentChunks, setContentChunks, onC
   return <div className="tool-overlay"><div className="tool-card readiness-card">
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">SOURCE MANAGER</p><h2>Build the source layer</h2>
-    <p className="muted">TXT/Markdown files are indexed locally after successful extraction. Other formats stay file-selected.</p>
+    <p className="muted">PDF, TXT and Markdown are indexed locally. PDF page numbers are preserved; scanned PDFs require OCR. External evidence is always labeled.</p>
     <div className="form-row">
       <input id="pp-source-file" type="file" accept=".pdf,.txt,.md,.doc,.docx" onChange={(e)=>setFile(e.target.files?.[0] || null)} />
       <input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
@@ -318,7 +320,7 @@ function SourcePanel({ sources, setSources, contentChunks, setContentChunks, onC
         const next = availableSourceStatuses(s.status)[0];
         const chunks = sourceChunkCount(contentChunks, s.id);
         return <div className="source-item" key={s.id}>
-          <FileText size={18}/><div><b>{s.title}</b><span>{s.fileName || s.type || "reference"} · {s.status} · {chunks} chunk{chunks === 1 ? "" : "s"}</span></div>
+          <FileText size={18}/><div><b>{s.title}</b><span>{getEvidenceLabel(s)} · {s.fileName || s.type || "reference"} · {s.status} · {chunks} chunk{chunks === 1 ? "" : "s"}</span></div>
           {next && <button className="secondary" onClick={()=>move(s,next)}>→ {next}</button>}
         </div>;
       }) : <div className="empty-state">No sources added for this mission.</div>}
@@ -332,7 +334,7 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
   const sourceIds = sources.filter((source) => source.missionId === missionId).map((source) => source.id);
   const chunkIds = contentChunks.filter((chunk) => chunk.missionId === missionId).map((chunk) => chunk.id);
   const verifiedQuestions = groundedQuestionsForMission(groundedQuestions, missionId, sourceIds, chunkIds);
-  const baseQuestions = (verifiedQuestions.length ? verifiedQuestions : demoQuestions.filter((item) => item.missionId === missionId));
+  const baseQuestions = verifiedQuestions;
   const isGroundedMode = verifiedQuestions.length > 0;
   const topicOptions = [...new Set(baseQuestions.map((item) => item.topicId))];
   const missionQuestions = baseQuestions.filter((item) => (difficulty === "all" || item.difficulty === difficulty) && (topicId === "all" || item.topicId === topicId));
@@ -378,9 +380,9 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
   }));
   return <div className="tool-overlay"><div className="tool-card">
     <button className="close-session" onClick={onClose}><X /></button>
-    <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2><p className="muted">{isGroundedMode ? "Source-grounded questions are active." : "No verified source-grounded questions are loaded yet; showing product-demo questions only."}</p>
+    <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2><p className="muted">{isGroundedMode ? "Source-grounded questions are active." : "No verified questions are loaded. Trusted external verification is required before new exam content is admitted."}</p>
     <div className="form-row mcq-filters"><select value={difficulty} onChange={(e)=>{setDifficulty(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All difficulty</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><select value={topicId} onChange={(e)=>{setTopicId(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All topics</option>{topicOptions.map((id)=><option key={id} value={id}>{id}</option>)}</select></div>
-    <div className="question-meta">Question {questionState.index + 1} / {missionQuestions.length} · Score {questionState.score}/{questionState.attempts}</div>
+    <div className="question-meta">Question {questionState.index + 1} / {missionQuestions.length} · Score {questionState.score}/{questionState.attempts} · {getEvidenceLabel(sources.find((source) => source.id === q.sourceRefs?.[0]) || {})}</div>
     <h3>{q.stem}</h3>
     <div className="options">{q.options.map((o)=><button key={o.id} className={answered ? (o.id===q.correctOptionId ? "option correct" : o.id===questionState.selected ? "option wrong" : "option") : "option"} onClick={()=>choose(o.id)}>{o.id.toUpperCase()}. {o.text}</button>)}</div>
     {answered && <div className={questionState.selected===q.correctOptionId ? "answer good" : "answer bad"}>{questionState.selected===q.correctOptionId ? q.explanation : "Not correct — review the explanation/source before moving on."}</div>}
@@ -478,7 +480,20 @@ function CoursePanel({ nodes, setNodes, revisions, sources, contentChunks, cours
     if (!topic) return;
     const result = buildGroundedCourseDraft({ chunks: contentChunks, missionId, topic });
     if (!result.generated) {
-      setGroundingMessage("No matching source evidence found. Nothing was generated.");
+      if (result.researchRequest) {
+        setState((current) => ({
+          ...current,
+          externalVerificationRequests: [
+            result.researchRequest,
+            ...(current.externalVerificationRequests || []).filter(
+              (item) => item.missionId !== missionId || item.topic !== topic
+            ),
+          ].slice(0, 100),
+        }));
+        setGroundingMessage("PDF/source evidence not found. Added a trusted-external verification request; nothing was generated yet.");
+      } else {
+        setGroundingMessage("No matching source evidence found. Nothing was generated.");
+      }
       return;
     }
     setCourseContent((current) => [
@@ -517,7 +532,7 @@ function CoursePanel({ nodes, setNodes, revisions, sources, contentChunks, cours
     <div className="readiness-grid"><div><span>Course nodes</span><b>{missionNodes.length}</b></div><div><span>Revision cards</span><b>{revisions.filter((r)=>r.missionId===missionId).length}</b></div><div><span>Due now</span><b>{due}</b></div></div>
     <div className="panel" style={{ marginTop: 16 }}>
       <p className="eyebrow">SOURCE-GROUNDED COURSE BUILDER</p>
-      <p className="muted">Builds an evidence draft only from indexed source chunks. No source match means no generation.</p>
+      <p className="muted">Uses indexed PDF/source evidence first. If the PDF does not contain the topic, the app creates a trusted-external verification request instead of inventing content.</p>
       <div className="form-row">
         <input value={groundingTopic} onChange={(e)=>setGroundingTopic(e.target.value)} placeholder="Enter a topic to ground from sources" />
         <button className="primary" onClick={buildGroundedDraft}>Build evidence draft</button>
@@ -525,7 +540,7 @@ function CoursePanel({ nodes, setNodes, revisions, sources, contentChunks, cours
       {groundingMessage && <p className="muted">{groundingMessage}</p>}
       {missionCourseContent.length > 0 && <div className="source-list">
         {missionCourseContent.map((item) => <div className="source-item" key={item.id}>
-          <FileText size={18}/><div><b>{item.title}</b><span>{item.kind} · source {item.sourceRefs.join(", ")}</span><p>{item.body}</p></div>
+          <FileText size={18}/><div><b>{item.title}</b><span>{item.kind} · source {item.sourceRefs.join(", ")} · {(item.evidenceLayers || ["user-source"]).join(", ")}</span><p>{item.body}</p></div>
         </div>)}
       </div>}
     </div>

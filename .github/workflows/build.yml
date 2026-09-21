@@ -22,6 +22,8 @@ jobs:
       - run: npm run validate
       - run: npm run validate:course-builder
       - run: npm run validate:source-grounded-mcq
+      - run: npm run validate:evidence-pipeline
+      - run: npm run validate:trusted-sources
 
   production-build:
     name: Production build

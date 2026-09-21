@@ -5,6 +5,8 @@ export const groundedQuestionSchema = {
   topicId: "string",
   sourceRefs: [],
   sourceChunkRefs: [],
+  evidenceLayers: [],
+  sourceUrls: [],
   stem: "",
   options: [],
   correctOptionId: "",
@@ -24,6 +26,8 @@ export function createGroundedQuestion({
   difficulty = "medium",
   sourceRefs = [],
   sourceChunkRefs = [],
+  evidenceLayers = [],
+  sourceUrls = [],
   tags = [],
 }) {
   if (!missionId || !topicId || !String(stem || "").trim()) return null;
@@ -35,6 +39,8 @@ export function createGroundedQuestion({
     topicId,
     sourceRefs: [...new Set(sourceRefs)],
     sourceChunkRefs: [...new Set(sourceChunkRefs)],
+    evidenceLayers: [...new Set(evidenceLayers)],
+    sourceUrls: [...new Set(sourceUrls)],
     stem: String(stem).trim(),
     options,
     correctOptionId,

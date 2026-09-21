@@ -6,6 +6,8 @@ export const courseContentSchema = {
   body: "string",
   sourceRefs: [],
   sourceChunkRefs: [],
+  evidenceLayers: [],
+  sourceUrls: [],
   status: "draft | reviewed",
   createdAt: 0,
 };
@@ -17,6 +19,8 @@ export function createCourseContent({
   body = "",
   sourceRefs = [],
   sourceChunkRefs = [],
+  evidenceLayers = [],
+  sourceUrls = [],
   status = "draft",
 }) {
   if (!missionId || !String(title || "").trim()) return null;
@@ -28,6 +32,8 @@ export function createCourseContent({
     body: String(body || "").trim(),
     sourceRefs: [...new Set(sourceRefs)],
     sourceChunkRefs: [...new Set(sourceChunkRefs)],
+    evidenceLayers: [...new Set(evidenceLayers)],
+    sourceUrls: [...new Set(sourceUrls)],
     status,
     createdAt: Date.now(),
   };
