@@ -25,8 +25,8 @@ function App() {
   const [questionState, setQuestionState] = useState({ index: 0, selected: null, score: 0, attempts: 0 });
 
   useEffect(() => {
-    saveState({ ...state, activeMission: active });
-  }, [state, active]);
+    saveState({ ...state, activeMission: active, sources, courseNodes });
+  }, [state, active, sources, courseNodes]);
 
   const selectedMission = useMemo(
     () => missions.find((m) => m.id === active) ?? missions[0],
