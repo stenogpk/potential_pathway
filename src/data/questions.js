@@ -25,7 +25,7 @@ export const attemptSchema = {
   attemptedAt: 0,
 };
 
-export function calculateMarks(isCorrect, marking = { correct: 1, wrong: 0 }) {
+export const missionMarking = {\n  pcs: null,\n  chemistry: { correct: 3, wrong: -1 },\n};\n\nexport function calculateMarks(isCorrect, marking = { correct: 1, wrong: 0 }) {
   return isCorrect ? marking.correct : marking.wrong;
 }
 
