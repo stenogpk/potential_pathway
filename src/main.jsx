@@ -142,7 +142,7 @@ function App() {
       {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} onClose={() => setPanel(null)} />}
       {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} missionId={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
-      {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} setState={setState} onClose={() => setPanel(null)} />}
+      {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} sources={sources} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "revision" && <RevisionPanel revisions={state.revisions} courseNodes={courseNodes} setState={setState} onClose={() => setPanel(null)} />}
       {session && (
         <div className="session-overlay">
@@ -372,40 +372,32 @@ function RevisionPanel({ revisions, courseNodes, setState, onClose }) {
   </div></div>
 }
 
-function CoursePanel({ nodes, setNodes, revisions, setState, onClose }) {
+function CoursePanel({ nodes, setNodes, revisions, sources, setState, onClose }) {
   const [missionId, setMissionId] = useState("pcs");
   const [kind, setKind] = useState("subject");
   const [parentId, setParentId] = useState("");
   const [name, setName] = useState("");
   const [status, setStatus] = useState("not-started");
-  const subjects = nodes.filter((n) => n.missionId === missionId && n.kind === "subject");
-  const topics = nodes.filter((n) => n.missionId === missionId && n.kind === "topic");
+  const [sourceId, setSourceId] = useState("");
+  const missionNodes = nodes.filter((n) => n.missionId === missionId);
+  const subjects = missionNodes.filter((n) => n.kind === "subject");
+  const topics = missionNodes.filter((n) => n.kind === "topic");
   const add = () => {
     const clean = name.trim();
-    if (!clean) return;
-    if (kind !== "subject" && !parentId) return;
-    const node = {
-      id: crypto.randomUUID(),
-      missionId,
-      kind,
-      name: clean,
-      parentId: kind === "subject" ? null : parentId,
-      status,
-      sourceRefs: [],
-      createdAt: Date.now(),
-    };
+    if (!clean || (kind !== "subject" && !parentId)) return;
+    const node = { id: crypto.randomUUID(), missionId, kind, name: clean, parentId: kind === "subject" ? null : parentId, status, sourceRefs: sourceId ? [sourceId] : [], createdAt: Date.now() };
     setNodes((current) => [node, ...current]);
     setName("");
+    setSourceId("");
   };
-  const due = revisions.filter((r) => r.dueAt <= Date.now()).length;
-  const grouped = missions.filter((m) => m.status === "active").map((m) => ({
-    mission: m,
-    rows: nodes.filter((n) => n.missionId === m.id),
-  }));
+  const setNodeStatus = (nodeId, nextStatus) => setNodes((current) => current.map((n) => n.id === nodeId ? { ...n, status: nextStatus, updatedAt: Date.now() } : n));
+  const attachSource = (nodeId, value) => setNodes((current) => current.map((n) => n.id === nodeId ? { ...n, sourceRefs: value ? [value] : [], updatedAt: Date.now() } : n));
+  const due = revisions.filter((r) => r.missionId === missionId && r.dueAt <= Date.now()).length;
+  const grouped = missions.filter((m) => m.status === "active").map((m) => ({ mission: m, rows: nodes.filter((n) => n.missionId === m.id) }));
   return <div className="tool-overlay"><div className="tool-card readiness-card">
     <button className="close-session" onClick={onClose}><X /></button>
-    <p className="eyebrow">COURSE + REVISION</p><h2>Build the course tree</h2>
-    <p className="muted">Create source-backed hierarchy: Subject → Topic → Subtopic. Select the parent before adding a child.</p>
+    <p className="eyebrow">COURSE + REVISION</p><h2>Course tree</h2>
+    <p className="muted">Build Subject → Topic → Subtopic and connect each node to its source.</p>
     <div className="form-row">
       <select value={missionId} onChange={(e)=>{setMissionId(e.target.value);setParentId("");}}>
         {missions.filter(m=>m.status==="active").map(m=><option key={m.id} value={m.id}>{m.title}</option>)}
@@ -413,19 +405,18 @@ function CoursePanel({ nodes, setNodes, revisions, setState, onClose }) {
       <select value={kind} onChange={(e)=>{setKind(e.target.value);setParentId("");}}>
         <option value="subject">Subject</option><option value="topic">Topic</option><option value="subtopic">Subtopic</option>
       </select>
-      {kind === "topic" && <select value={parentId} onChange={(e)=>setParentId(e.target.value)}>
-        <option value="">Select subject</option>{subjects.map((n)=><option key={n.id} value={n.id}>{n.name}</option>)}
-      </select>}
-      {kind === "subtopic" && <select value={parentId} onChange={(e)=>setParentId(e.target.value)}>
-        <option value="">Select topic</option>{topics.map((n)=><option key={n.id} value={n.id}>{n.name}</option>)}
-      </select>}
+      {kind === "topic" && <select value={parentId} onChange={(e)=>setParentId(e.target.value)}><option value="">Select subject</option>{subjects.map((n)=><option key={n.id} value={n.id}>{n.name}</option>)}</select>}
+      {kind === "subtopic" && <select value={parentId} onChange={(e)=>setParentId(e.target.value)}><option value="">Select topic</option>{topics.map((n)=><option key={n.id} value={n.id}>{n.name}</option>)}</select>}
       <input value={name} onChange={(e)=>setName(e.target.value)} placeholder="Enter course node name" />
       <select value={status} onChange={(e)=>setStatus(e.target.value)}><option value="not-started">Not started</option><option value="learning">Learning</option><option value="revision-ready">Revision ready</option><option value="completed">Completed</option></select>
+      <select value={sourceId} onChange={(e)=>setSourceId(e.target.value)}><option value="">No source attached</option>{sources.filter((s)=>s.missionId===missionId).map((s)=><option key={s.id} value={s.id}>{s.title}</option>)}</select>
       <button className="primary" onClick={add}>Add</button>
     </div>
-    <div className="readiness-grid"><div><span>Course nodes</span><b>{nodes.length}</b></div><div><span>Revision cards</span><b>{revisions.length}</b></div><div><span>Due now</span><b>{due}</b></div></div>
+    <div className="readiness-grid"><div><span>Course nodes</span><b>{missionNodes.length}</b></div><div><span>Revision cards</span><b>{revisions.filter((r)=>r.missionId===missionId).length}</b></div><div><span>Due now</span><b>{due}</b></div></div>
+    <div className="course-tree-list">{missionNodes.length ? missionNodes.map((n)=><div className="course-node-row" key={n.id}>
+      <div><b>{n.kind}: {n.name}</b><span>{n.sourceRefs?.length ? `Source attached · ${sources.find((s)=>s.id===n.sourceRefs[0])?.title || n.sourceRefs[0]}` : "No source attached"}</span></div>
+      <div className="node-actions"><select value={n.status} onChange={(e)=>setNodeStatus(n.id,e.target.value)}><option value="not-started">Not started</option><option value="learning">Learning</option><option value="revision-ready">Revision ready</option><option value="completed">Completed</option></select><select value={n.sourceRefs?.[0] || ""} onChange={(e)=>attachSource(n.id,e.target.value)}><option value="">No source</option>{sources.filter((s)=>s.missionId===missionId).map((s)=><option key={s.id} value={s.id}>{s.title}</option>)}</select></div>
+    </div>) : <div className="empty-state">No nodes configured yet.</div>}</div>
     <div className="source-list">{grouped.map(({mission,rows})=><div className="source-item" key={mission.id}><BookOpen size={18}/><div><b>{mission.title}</b><span>{rows.length ? rows.map((n)=>`${n.kind}: ${n.name} · ${n.status}`).join(" · ") : "No nodes configured yet"}</span></div></div>)}</div>
   </div></div>;
 }
-
-
