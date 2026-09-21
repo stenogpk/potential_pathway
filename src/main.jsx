@@ -11,6 +11,8 @@ import { getDueRevisions, revisionLoad, scheduleRevision } from "./data/revision
 import { calculateReadiness, topicAccuracy, weakestTopics } from "./data/readiness";
 import { loadState, saveState } from "./lib/storage";
 import { buildStudyPlan } from "./data/planner";
+import { availableSourceStatuses, transitionSource } from "./data/sourceLifecycle.js";
+import { sourceStats } from "./data/sourceStats.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -243,35 +245,34 @@ function SourcePanel({ sources, setSources, onClose }) {
   const [title, setTitle] = useState("");
   const [missionId, setMissionId] = useState("pcs");
   const [fileInfo, setFileInfo] = useState(null);
+  const stats = sourceStats(sources, missionId);
   const add = () => {
     const clean = title.trim() || fileInfo?.name;
     if (!clean) return;
     setSources((current) => [{
-      id: crypto.randomUUID(),
-      title: clean,
-      missionId,
-      type: fileInfo?.type || "reference",
-      authority: "user-provided",
+      id: crypto.randomUUID(), title: clean, missionId,
+      type: fileInfo?.type || "reference", authority: "user-provided",
       status: fileInfo ? "file-selected" : "pending",
-      fileName: fileInfo?.name || null,
-      fileSize: fileInfo?.size || null,
-      sourceRefs: [],
-      addedAt: Date.now()
+      fileName: fileInfo?.name || null, fileSize: fileInfo?.size || null,
+      mimeType: fileInfo?.type || null, sourceRefs: [], addedAt: Date.now()
     }, ...current]);
-    setTitle("");
-    setFileInfo(null);
+    setTitle(""); setFileInfo(null);
   };
+  const move = (source, nextStatus) => setSources((current) =>
+    current.map((item) => item.id === source.id ? transitionSource(item, nextStatus) : item)
+  );
   return <div className="tool-overlay"><div className="tool-card">
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">SOURCE MANAGER</p><h2>Build the source layer</h2>
-    <p className="muted">Select a source file or enter its name. The file metadata is recorded now; parsing/indexing will be connected to the source engine next.</p>
-    <div className="form-row"><input type="file" accept=".pdf,.txt,.md,.doc,.docx" onChange={(e)=>{const file=e.target.files?.[0]; setFileInfo(file ? {name:file.name,size:file.size,type:file.type || "reference"} : null);}} /><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
-    <select value={missionId} onChange={(e)=>setMissionId(e.target.value)}>{missions.filter(m=>m.status==="active").map(m=><option key={m.id} value={m.id}>{m.title}</option>)}</select>
-    <button className="primary" onClick={add}>Add source</button></div>
-    <div className="source-list">{sources.length ? sources.map(s=><div className="source-item" key={s.id}><FileText size={18}/><div><b>{s.title}</b><span>{missions.find(m=>m.id===s.missionId)?.title} · {s.authority || "user-provided"} · {s.fileName || s.type || "reference"} · {s.status}{s.fileSize ? ` · ${Math.ceil(s.fileSize / 1024)} KB` : ""}</span></div></div>) : <div className="empty-state">No sources added yet.</div>}</div>
+    <p className="muted">Source lifecycle is controlled. Parsing/indexing remains a separate engine step.</p>
+    <div className="form-row"><input type="file" accept=".pdf,.txt,.md,.doc,.docx" onChange={(e)=>{const file=e.target.files?.[0];setFileInfo(file?{name:file.name,size:file.size,type:file.type||"reference"}:null);}} />
+      <input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
+      <select value={missionId} onChange={(e)=>setMissionId(e.target.value)}>{missions.filter(m=>m.status==="active").map(m=><option key={m.id} value={m.id}>{m.title}</option>)}</select>
+      <button className="primary" onClick={add}>Add source</button></div>
+    <div className="readiness-grid"><div><span>Total</span><b>{stats.total}</b></div><div><span>Pending</span><b>{stats.pending}</b></div><div><span>Indexed</span><b>{stats.indexed}</b></div></div>
+    <div className="source-list">{sources.filter(s=>s.missionId===missionId).length?sources.filter(s=>s.missionId===missionId).map(s=>{const next=availableSourceStatuses(s.status)[0];return <div className="source-item" key={s.id}><FileText size={18}/><div><b>{s.title}</b><span>{s.fileName||s.type||"reference"} · {s.status}</span></div>{next&&<button className="secondary" onClick={()=>move(s,next)}>→ {next}</button>}</div>}):<div className="empty-state">No sources added for this mission.</div>}</div>
   </div></div>;
 }
-
 function McqPanel({ questionState, setQuestionState, setState, missionId, onClose }) {
   const [difficulty, setDifficulty] = useState("all");
   const [topicId, setTopicId] = useState("all");
