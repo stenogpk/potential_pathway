@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import { missions } from "./data/missions";
-import { questionBank } from "./data/questions";
+import { calculateMarks, questionBank } from "./data/questions";
 import { loadState, saveState } from "./lib/storage";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
@@ -132,8 +132,8 @@ function App() {
       </main>
 
       {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} onClose={() => setPanel(null)} />}
-      {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} onClose={() => setPanel(null)} />}
-      {panel === "readiness" && <ReadinessPanel sessions={state.sessions} questionState={questionState} onClose={() => setPanel(null)} />}
+      {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} onClose={() => setPanel(null)} />}
+      {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} onClose={() => setPanel(null)} />}
       {session && (
         <div className="session-overlay">
           <div className="session-card">
@@ -242,43 +242,57 @@ function SourcePanel({ sources, setSources, onClose }) {
   </div></div>;
 }
 
-function McqPanel({ questionState, setQuestionState, onClose }) {
+function McqPanel({ questionState, setQuestionState, setState, onClose }) {
   const q = demoQuestions[questionState.index];
   const answered = questionState.selected !== null;
-  const choose = (i) => {
+  const choose = (optionId) => {
     if (answered) return;
-    setQuestionState((s) => ({ ...s, selected: i, attempts: s.attempts + 1, score: s.score + (i === q.correct ? 1 : 0) }));
+    const isCorrect = optionId === q.correctOptionId;
+    const attempt = {
+      id: crypto.randomUUID(),
+      questionId: q.id,
+      missionId: q.missionId,
+      subjectId: q.subjectId,
+      topicId: q.topicId,
+      selectedOptionId: optionId,
+      isCorrect,
+      marks: calculateMarks(isCorrect),
+      timeSeconds: 0,
+      attemptedAt: Date.now(),
+    };
+    setQuestionState((s) => ({
+      ...s,
+      selected: optionId,
+      attempts: s.attempts + 1,
+      score: s.score + (isCorrect ? 1 : 0),
+    }));
+    setState((current) => ({ ...current, attempts: [attempt, ...(current.attempts || [])].slice(0, 1000) }));
   };
-  const next = () => setQuestionState((s) => ({ ...s, index: (s.index + 1) % demoQuestions.length, selected: null }));
+  const next = () => setQuestionState((s) => ({
+    ...s,
+    index: (s.index + 1) % demoQuestions.length,
+    selected: null
+  }));
   return <div className="tool-overlay"><div className="tool-card">
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2>
     <div className="question-meta">Question {questionState.index + 1} / {demoQuestions.length} · Score {questionState.score}/{questionState.attempts}</div>
-    <h3>{q.stem}</h3><div className="options">{q.options.map((o,i)=><button key={o} className={answered ? (i===q.correct ? "option correct" : i===questionState.selected ? "option wrong" : "option") : "option"} onClick={()=>choose(i)}>{String.fromCharCode(65+i)}. {o}</button>)}</div>
-    {answered && <div className={questionState.selected===q.correct ? "answer good" : "answer bad"}>{questionState.selected===q.correct ? "Correct — recorded for this session." : "Not correct — review the explanation/source before moving on."}</div>}
+    <h3>{q.stem}</h3>
+    <div className="options">{q.options.map((o)=><button key={o.id} className={answered ? (o.id===q.correctOptionId ? "option correct" : o.id===questionState.selected ? "option wrong" : "option") : "option"} onClick={()=>choose(o.id)}>{o.id.toUpperCase()}. {o.text}</button>)}</div>
+    {answered && <div className={questionState.selected===q.correctOptionId ? "answer good" : "answer bad"}>{questionState.selected===q.correctOptionId ? q.explanation : "Not correct — review the explanation/source before moving on."}</div>}
     <button className="primary" onClick={next}>{answered ? "Next question" : "Skip for now"}</button>
   </div></div>;
 }
 
-function ReadinessPanel({ sessions, questionState, onClose }) {
+function ReadinessPanel({ sessions, attempts, onClose }) {
   const mins=Math.floor(sessions.reduce((a,s)=>a+(s.actualSeconds||0),0)/60);
-  const accuracy=questionState.attempts ? Math.round(questionState.score/questionState.attempts*100) : null;
+  const total=attempts.length;
+  const correct=attempts.filter((a)=>a.isCorrect).length;
+  const accuracy=total ? Math.round(correct/total*100) : null;
   return <div className="tool-overlay"><div className="tool-card readiness-card">
     <button className="close-session" onClick={onClose}><X /></button><p className="eyebrow">READINESS SNAPSHOT</p><h2>What your data says</h2>
-    <div className="readiness-grid"><div><span>Study logged</span><b>{mins} min</b></div><div><span>MCQ attempts</span><b>{questionState.attempts}</b></div><div><span>Accuracy</span><b>{accuracy === null ? "—" : accuracy+"%"}</b></div></div>
-    <p className="muted">This is an early instrument, not an exam prediction. Readiness will become topic-weighted after real question and revision data are connected.</p>
+    <div className="readiness-grid"><div><span>Study logged</span><b>{mins} min</b></div><div><span>MCQ attempts</span><b>{total}</b></div><div><span>Accuracy</span><b>{accuracy === null ? "—" : accuracy+"%"}</b></div></div>
+    <p className="muted">This is an early instrument, not an exam prediction. Accuracy now comes from persisted MCQ attempts, so it survives reloads and can later be broken down by mission and topic.</p>
   </div></div>;
 }
 
-function Stat({ icon: Icon, label, value, note }) {
-  return <div className="stat-card"><Icon size={20} /><span>{label}</span><strong>{value}</strong><small>{note}</small></div>;
-}
-
-createRoot(document.getElementById("root")).render(<App />);
-
-
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/potential_pathway/sw.js").catch(() => {});
-  });
-}
