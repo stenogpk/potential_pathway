@@ -57,12 +57,13 @@ export const courseStatusLabels = {
   completed: "Completed",
 };
 
-export function createCourseNode({ missionId, subjectId = null, topicId = null, name, kind }) {
+export function createCourseNode({ missionId, subjectId = null, topicId = null, parentId = null, name, kind }) {
   return {
     id: crypto.randomUUID(),
     missionId,
     subjectId,
     topicId,
+    parentId,
     name,
     kind,
     status: "not-started",
