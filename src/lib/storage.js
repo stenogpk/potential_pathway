@@ -10,19 +10,25 @@ export const initialState = {
   version: 4,
 };
 
+export function normalizeSources(sources) {
+  if (!Array.isArray(sources)) return [];
+  return sources
+    .filter((source) => source && typeof source === "object" && source.id)
+    .map((source) => ({
+      ...source,
+      sourceRefs: Array.isArray(source.sourceRefs) ? source.sourceRefs : [],
+      status: source.status || "pending",
+      fileName: source.fileName ?? null,
+      fileSize: source.fileSize ?? null,
+      mimeType: source.mimeType ?? null,
+    }));
+}
+
 export function loadState() {
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!parsed || typeof parsed !== "object") return initialState;
-    return {
-      ...initialState,
-      ...parsed,
-      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
-      sources: Array.isArray(parsed.sources) ? parsed.sources : [],
-      attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
-      revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [],
-      courseNodes: Array.isArray(parsed.courseNodes) ? parsed.courseNodes : [],
-    };
+    return migrateStudyState(parsed);
   } catch {
     return initialState;
   }
@@ -31,6 +37,7 @@ export function loadState() {
 export function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     ...state,
+    sources: normalizeSources(state.sources),
     version: 4,
   }));
 }
@@ -44,14 +51,13 @@ export function upsertRevision(current, revision) {
   return [revision, ...rows];
 }
 
-
 export function migrateStudyState(parsed) {
   if (!parsed || typeof parsed !== "object") return initialState;
   return {
     ...initialState,
     ...parsed,
     sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
-    sources: Array.isArray(parsed.sources) ? parsed.sources : [],
+    sources: normalizeSources(parsed.sources),
     attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
     revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [],
     courseNodes: Array.isArray(parsed.courseNodes) ? parsed.courseNodes : [],
