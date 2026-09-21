@@ -36,8 +36,10 @@ if (evidence.chunkCount !== 1 || evidence.chunks[0].evidenceLayer !== "trusted-e
   throw new Error("External evidence ingestion failed.");
 }
 
-const ranked = rankEvidenceSources([officialSource, userSource, verified]);
-if (ranked[0].id !== "u1" || ranked[1].id !== "o1") throw new Error("Evidence priority failed.");
+const ranked = rankEvidenceSources([officialSource, userSource, verified], "course-content");
+if (ranked[0].id !== "u1" || ranked[1].id !== "o1") throw new Error("Course-content evidence policy failed.");
+const currentRanked = rankEvidenceSources([officialSource, userSource, verified], "current-fact");
+if (currentRanked[0].id !== "u1" || currentRanked[1].id !== "o1") throw new Error("Current-fact source-first policy failed.");
 
 const request = buildExternalVerificationRequest({ missionId: "pcs", topic: "economy" });
 if (request.requiredLayer !== "trusted-external") throw new Error("Fallback layer failed.");
