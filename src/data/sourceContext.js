@@ -8,11 +8,14 @@ export function buildSourceContext(chunks, query, { missionId = null, limit = 5 
     locator: chunk.locator,
     text: chunk.text,
     score: chunk.score,
+    evidenceLayer: chunk.evidenceLayer || "user-source",
+    sourceUrl: chunk.sourceUrl || null,
+    publisher: chunk.publisher || null,
   }));
 }
 
 export function sourceContextText(context) {
   return (Array.isArray(context) ? context : [])
-    .map((item) => "[" + item.sourceId + " · " + item.locator + "] " + item.text)
+    .map((item) => "[" + item.sourceId + " · " + item.locator + " · " + (item.evidenceLayer || "user-source") + "] " + item.text)
     .join("\n\n");
 }
