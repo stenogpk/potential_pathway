@@ -49,6 +49,8 @@ export const emptyMissionProgress = {
   sessions: 0,
   mcqAttempts: 0,
   mcqCorrect: 0,
+    accuracy: null,
+    revisionDue: 0,
   completedTopics: 0,
   totalTopics: 0,
 };
