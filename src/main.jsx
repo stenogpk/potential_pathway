@@ -91,7 +91,9 @@ function App() {
   };
 
   const todaySessions = state.sessions.filter((s) => new Date(s.startedAt).toDateString() === new Date().toDateString());
-  const todayMinutes = Math.floor(todaySessions.reduce((sum, s) => sum + s.actualSeconds, 0) / 60);\n  const todayAttempts = state.attempts.filter((a) => new Date(a.attemptedAt).toDateString() === new Date().toDateString());\n  const todayCorrect = todayAttempts.filter((a) => a.isCorrect).length;
+  const todayMinutes = Math.floor(todaySessions.reduce((sum, s) => sum + s.actualSeconds, 0) / 60);
+  const todayAttempts = state.attempts.filter((a) => new Date(a.attemptedAt).toDateString() === new Date().toDateString());
+  const todayCorrect = todayAttempts.filter((a) => a.isCorrect).length;
 
   return (
     <div className="app-shell">
