@@ -1,7 +1,7 @@
 const STORAGE_KEY = "pp-study-state-v2";
 
 export const initialState = {
-  sessions: [],
+  sessions: [],\n  sources: [],
   activeMission: "dashboard",
   version: 2,
 };
@@ -13,7 +13,7 @@ export function loadState() {
     return {
       ...initialState,
       ...parsed,
-      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
+      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],\n      sources: Array.isArray(parsed.sources) ? parsed.sources : [],
     };
   } catch {
     return initialState;
