@@ -6,12 +6,37 @@ export const contentChunkSchema = {
   text: "string",
   page: "number | null",
   order: "number",
+  evidenceLayer: "user-source | official | trusted-external | secondary",
+  sourceUrl: "string | null",
+  publisher: "string | null",
 };
 
-export function createContentChunk({ id, sourceId, missionId, locator = "", text, page = null, order = 0 }) {
+export function createContentChunk({
+  id,
+  sourceId,
+  missionId,
+  locator = "",
+  text,
+  page = null,
+  order = 0,
+  evidenceLayer = "user-source",
+  sourceUrl = null,
+  publisher = null,
+}) {
   const clean = String(text || "").trim();
   if (!id || !sourceId || !missionId || !clean) return null;
-  return { id, sourceId, missionId, locator, text: clean, page, order };
+  return {
+    id,
+    sourceId,
+    missionId,
+    locator,
+    text: clean,
+    page,
+    order,
+    evidenceLayer,
+    sourceUrl,
+    publisher,
+  };
 }
 
 export function normalizeContentChunks(chunks) {
@@ -23,5 +48,8 @@ export function normalizeContentChunks(chunks) {
       text: String(chunk.text).trim(),
       page: Number.isFinite(chunk.page) ? chunk.page : null,
       order: Number.isFinite(chunk.order) ? chunk.order : index,
+      evidenceLayer: chunk.evidenceLayer || "user-source",
+      sourceUrl: chunk.sourceUrl ?? null,
+      publisher: chunk.publisher ?? null,
     }));
 }
