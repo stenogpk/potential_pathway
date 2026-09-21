@@ -2,7 +2,7 @@ name: PP CI
 
 on:
   push:
-    branches: [main, source-grounded-engine-v1]
+    branches: [main]
   pull_request:
     branches: [main]
 
