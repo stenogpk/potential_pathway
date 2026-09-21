@@ -31,8 +31,6 @@ export const claimTypes = [
 ];
 
 export const evidencePolicy = {
-  // Always inspect the provided source first. External evidence is a fallback,
-  // not a silent replacement for the supplied study material.
   default: {
     firstChoice: "user-source",
     fallbackLayers: ["official", "trusted-external", "secondary"],

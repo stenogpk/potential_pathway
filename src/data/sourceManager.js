@@ -1,4 +1,5 @@
 import { indexSource } from "./sourceIndex.js";
+import { saveSourceFile } from "./sourceFileStore.js";
 
 export function createSourceRecord({ title, missionId, file = null }) {
   const clean = String(title || file?.name || "").trim();
@@ -40,7 +41,9 @@ export function isIndexableSource(source) {
 
 export async function prepareSource(source, file) {
   if (!isIndexableSource(source)) return { source, chunks: [], chunkCount: 0, indexed: false };
-  return { ...(await indexSource(source, file)), indexed: true };
+  const indexed = await indexSource(source, file);
+  await saveSourceFile(source.id, file);
+  return { ...indexed, indexed: true, originalFileStored: true };
 }
 
 export function sourceChunkCount(chunks, sourceId) {
