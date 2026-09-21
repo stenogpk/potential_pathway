@@ -1,3 +1,7 @@
+import { sourceSchema, createSource } from "./sourceModel.js";
+
+export { sourceSchema, createSource };
+
 export const emptyCourse = {
   missionId: null,
   sourceIds: [],
@@ -7,14 +11,7 @@ export const emptyCourse = {
 };
 
 export const courseEntitySchema = {
-  source: {
-    id: "string",
-    missionId: "string",
-    title: "string",
-    type: "official-pdf | reference | notes | other",
-    authority: "official | user-provided | secondary",
-    status: "pending | indexed | active | archived",
-  },
+  source: sourceSchema,
   subject: {
     id: "string",
     missionId: "string",
@@ -40,18 +37,6 @@ export const courseEntitySchema = {
   },
 };
 
-export function createSource({ missionId, title, type = "reference", authority = "user-provided" }) {
-  return {
-    id: crypto.randomUUID(),
-    missionId,
-    title,
-    type,
-    authority,
-    status: "pending",
-    createdAt: Date.now(),
-  };
-}
-
 export const courseStatusLabels = {
   "not-started": "Not started",
   learning: "Learning",
@@ -73,7 +58,6 @@ export function createCourseNode({ missionId, subjectId = null, topicId = null, 
     createdAt: Date.now(),
   };
 }
-
 
 export function updateCourseNode(nodes, nodeId, patch) {
   return nodes.map((node) => node.id === nodeId ? { ...node, ...patch, updatedAt: Date.now() } : node);
