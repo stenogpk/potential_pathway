@@ -16,6 +16,8 @@ import { sourceStats } from "./data/sourceStats.js";
 import { prepareSource, createSourceRecord, sourceChunkCount } from "./data/sourceManager.js";
 import { searchSources } from "./data/sourceSearch.js";
 import { buildGroundedCourseDraft } from "./data/courseGeneration.js";
+import { groundedQuestionsForMission, addGroundedQuestion } from "./data/mcqBank.js";
+import { validateGroundedQuestion } from "./data/questionProvenance.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -29,12 +31,13 @@ function App() {
   const [sources, setSources] = useState(state.sources || []);
   const [contentChunks, setContentChunks] = useState(state.contentChunks || []);
   const [courseContent, setCourseContent] = useState(state.courseContent || []);
+  const [groundedQuestions, setGroundedQuestions] = useState(state.groundedQuestions || []);
   const [courseNodes, setCourseNodes] = useState(state.courseNodes || []);
   const [questionState, setQuestionState] = useState({ index: 0, selected: null, score: 0, attempts: 0 });
 
   useEffect(() => {
-    saveState({ ...state, activeMission: active, sources, contentChunks, courseContent, courseNodes });
-  }, [state, active, sources, contentChunks, courseContent, courseNodes]);
+    saveState({ ...state, activeMission: active, sources, contentChunks, courseContent, groundedQuestions, courseNodes });
+  }, [state, active, sources, contentChunks, courseContent, groundedQuestions, courseNodes]);
 
   const selectedMission = useMemo(
     () => missions.find((m) => m.id === active) ?? missions[0],
@@ -147,7 +150,7 @@ function App() {
       </main>
 
       {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} contentChunks={contentChunks} setContentChunks={setContentChunks} onClose={() => setPanel(null)} />}
-      {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} missionId={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
+      {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} missionId={active === "dashboard" ? "pcs" : active} groundedQuestions={groundedQuestions} sources={sources} contentChunks={contentChunks} onClose={() => setPanel(null)} />}
       {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} sources={sources} contentChunks={contentChunks} courseContent={courseContent} setCourseContent={setCourseContent} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "revision" && <RevisionPanel revisions={state.revisions} courseNodes={courseNodes} setState={setState} onClose={() => setPanel(null)} />}
@@ -323,10 +326,14 @@ function SourcePanel({ sources, setSources, contentChunks, setContentChunks, onC
   </div></div>;
 }
 
-function McqPanel({ questionState, setQuestionState, setState, missionId, onClose }) {
+function McqPanel({ questionState, setQuestionState, setState, missionId, groundedQuestions, sources, contentChunks, onClose }) {
   const [difficulty, setDifficulty] = useState("all");
   const [topicId, setTopicId] = useState("all");
-  const baseQuestions = demoQuestions.filter((item) => item.missionId === missionId);
+  const sourceIds = sources.filter((source) => source.missionId === missionId).map((source) => source.id);
+  const chunkIds = contentChunks.filter((chunk) => chunk.missionId === missionId).map((chunk) => chunk.id);
+  const verifiedQuestions = groundedQuestionsForMission(groundedQuestions, missionId, sourceIds, chunkIds);
+  const baseQuestions = (verifiedQuestions.length ? verifiedQuestions : demoQuestions.filter((item) => item.missionId === missionId));
+  const isGroundedMode = verifiedQuestions.length > 0;
   const topicOptions = [...new Set(baseQuestions.map((item) => item.topicId))];
   const missionQuestions = baseQuestions.filter((item) => (difficulty === "all" || item.difficulty === difficulty) && (topicId === "all" || item.topicId === topicId));
   const q = missionQuestions.length ? missionQuestions[questionState.index % missionQuestions.length] : null;
@@ -371,7 +378,7 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, onClos
   }));
   return <div className="tool-overlay"><div className="tool-card">
     <button className="close-session" onClick={onClose}><X /></button>
-    <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2>
+    <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2><p className="muted">{isGroundedMode ? "Source-grounded questions are active." : "No verified source-grounded questions are loaded yet; showing product-demo questions only."}</p>
     <div className="form-row mcq-filters"><select value={difficulty} onChange={(e)=>{setDifficulty(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All difficulty</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><select value={topicId} onChange={(e)=>{setTopicId(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All topics</option>{topicOptions.map((id)=><option key={id} value={id}>{id}</option>)}</select></div>
     <div className="question-meta">Question {questionState.index + 1} / {missionQuestions.length} · Score {questionState.score}/{questionState.attempts}</div>
     <h3>{q.stem}</h3>

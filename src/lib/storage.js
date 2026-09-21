@@ -5,6 +5,7 @@ export const initialState = {
   sources: [],
   contentChunks: [],
   courseContent: [],
+  groundedQuestions: [],
   attempts: [],
   revisions: [],
   courseNodes: [],
@@ -42,7 +43,8 @@ export function saveState(state) {
     sources: normalizeSources(state.sources),
     contentChunks: Array.isArray(state.contentChunks) ? state.contentChunks : [],
     courseContent: Array.isArray(state.courseContent) ? state.courseContent : [],
-    version: 5,
+    groundedQuestions: Array.isArray(state.groundedQuestions) ? state.groundedQuestions : [],
+    version: 6,
   }));
 }
 
@@ -64,6 +66,7 @@ export function migrateStudyState(parsed) {
     sources: normalizeSources(parsed.sources),
     contentChunks: Array.isArray(parsed.contentChunks) ? parsed.contentChunks : [],
     courseContent: Array.isArray(parsed.courseContent) ? parsed.courseContent : [],
+    groundedQuestions: Array.isArray(parsed.groundedQuestions) ? parsed.groundedQuestions : [],
     attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
     revisions: Array.isArray(parsed.revisions) ? parsed.revisions : [],
     courseNodes: Array.isArray(parsed.courseNodes) ? parsed.courseNodes : [],
