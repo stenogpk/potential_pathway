@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "validate": "node scripts/validate-data.mjs",
-    "validate:source-lifecycle": "node scripts/validate-source-lifecycle.mjs"
+    "validate:source-lifecycle": "node scripts/validate-source-lifecycle.mjs",
+    "validate:source-registry": "node scripts/validate-source-registry.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
