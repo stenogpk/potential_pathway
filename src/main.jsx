@@ -11,6 +11,8 @@ import { getDueRevisions, revisionLoad, scheduleRevision } from "./data/revision
 import { calculateReadiness, topicAccuracy, weakestTopics } from "./data/readiness";
 import { loadState, saveState } from "./lib/storage";
 import { buildStudyPlan } from "./data/planner";
+import { sourceMatches, sourceLabel } from "./data/sourceModel";
+import { advanceSourceStatus } from "./data/sourceStatus";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -243,6 +245,7 @@ function SourcePanel({ sources, setSources, onClose }) {
   const [title, setTitle] = useState("");
   const [missionId, setMissionId] = useState("pcs");
   const [fileInfo, setFileInfo] = useState(null);
+  const [query, setQuery] = useState("");
   const add = () => {
     const clean = title.trim() || fileInfo?.name;
     if (!clean) return;
@@ -261,14 +264,17 @@ function SourcePanel({ sources, setSources, onClose }) {
     setTitle("");
     setFileInfo(null);
   };
+  const visibleSources = sources.filter((s) => s.missionId === missionId && sourceMatches(s, query));
+  const removeSource = (id) => setSources((current) => current.filter((s) => s.id !== id));
+  const advanceSource = (id) => setSources((current) => current.map((s) => s.id === id ? { ...advanceSourceStatus(s), updatedAt: Date.now() } : s));
   return <div className="tool-overlay"><div className="tool-card">
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">SOURCE MANAGER</p><h2>Build the source layer</h2>
     <p className="muted">Select a source file or enter its name. The file metadata is recorded now; parsing/indexing will be connected to the source engine next.</p>
-    <div className="form-row"><input type="file" accept=".pdf,.txt,.md,.doc,.docx" onChange={(e)=>{const file=e.target.files?.[0]; setFileInfo(file ? {name:file.name,size:file.size,type:file.type || "reference"} : null);}} /><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
+    <div className="form-row"><input value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Search sources" /><input type="file" accept=".pdf,.txt,.md,.doc,.docx" onChange={(e)=>{const file=e.target.files?.[0]; setFileInfo(file ? {name:file.name,size:file.size,type:file.type || "reference"} : null);}} /><input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="e.g. Official PGT Chemistry syllabus" />
     <select value={missionId} onChange={(e)=>setMissionId(e.target.value)}>{missions.filter(m=>m.status==="active").map(m=><option key={m.id} value={m.id}>{m.title}</option>)}</select>
     <button className="primary" onClick={add}>Add source</button></div>
-    <div className="source-list">{sources.length ? sources.map(s=><div className="source-item" key={s.id}><FileText size={18}/><div><b>{s.title}</b><span>{missions.find(m=>m.id===s.missionId)?.title} · {s.authority || "user-provided"} · {s.fileName || s.type || "reference"} · {s.status}{s.fileSize ? ` · ${Math.ceil(s.fileSize / 1024)} KB` : ""}</span></div></div>) : <div className="empty-state">No sources added yet.</div>}</div>
+    <div className="source-list">{visibleSources.length ? visibleSources.map(s=><div className="source-item" key={s.id}><FileText size={18}/><div><b>{sourceLabel(s)}</b><span>{missions.find(m=>m.id===s.missionId)?.title} · {s.authority || "user-provided"} · {s.fileName || s.type || "reference"} · {s.status}{s.fileSize ? ` · ${Math.ceil(s.fileSize / 1024)} KB` : ""}</span></div><div className="node-actions"><button className="secondary" onClick={()=>advanceSource(s.id)}>Advance</button><button className="secondary" onClick={()=>removeSource(s.id)}>Delete</button></div></div>) : <div className="empty-state">No matching sources.</div>}</div>
   </div></div>;
 }
 
