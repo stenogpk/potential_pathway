@@ -182,7 +182,8 @@ function formatTime(seconds) {
 }
 
 function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttempts, todayCorrect, sessions, attempts, revisions, courseNodes, contentChunks }) {
-  const planner = buildStudyPlan({ missionId: "pcs", availableMinutes: 50, sessions, attempts, revisions, courseNodes, contentChunks });
+  const [availableMinutes, setAvailableMinutes] = useState(50);
+  const planner = buildStudyPlan({ missionId: "pcs", availableMinutes, sessions, attempts, revisions, courseNodes, contentChunks });
   return <div className="content">
     <section className="hero-card">
       <div>
@@ -196,7 +197,7 @@ function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttemp
 
     {completed && <div className="success-banner"><CheckCircle2 /> Session recorded. Your study time is saved on this device.</div>}
 
-    <section className="planner-card"><div><p className="eyebrow">NEXT BEST STUDY BLOCK</p><h3>50-minute adaptive plan</h3><p className="muted">The order adapts to due revision, repeated weak topics and unfinished course nodes.</p></div><div className="planner-steps">{planner.plan.map((item, index) => <div className="planner-step" key={`${item.type}-${index}`}><span>{index + 1}</span><div><b>{item.label}</b><small>{item.minutes} min · {item.type}</small></div></div>)}</div></section>
+    <section className="planner-card"><div><p className="eyebrow">NEXT BEST STUDY BLOCK</p><h3>{availableMinutes}-minute adaptive plan</h3><p className="muted">Choose the time you actually have today. The order adapts to due revision, repeated weak topics and unfinished course nodes.</p><div className="session-buttons">{[10,20,30,50,60].map((m) => <button key={m} className="secondary" onClick={() => setAvailableMinutes(m)}>{m} min</button>)}</div></div><div className="planner-steps">{planner.plan.map((item, index) => <div className="planner-step" key={`${item.type}-${index}`}><span>{index + 1}</span><div><b>{item.label}</b><small>{item.minutes} min · {item.type}</small></div></div>)}</div></section>
 
     <div className="section-heading"><div><p className="eyebrow">ACTIVE MISSIONS</p><h2>Your preparation pathways</h2></div><span className="muted">{sessionCount} session{sessionCount === 1 ? "" : "s"} today</span></div>
     <div className="mission-grid">{missions.map((m) => <MissionCard key={m.id} mission={m} onStart={onStart} progress={missionProgress(sessions, m.id, attempts, revisions, courseNodes)} />)}</div>
