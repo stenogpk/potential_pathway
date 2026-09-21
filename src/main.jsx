@@ -18,7 +18,8 @@ function App() {
   const [session, setSession] = useState(null);
   const [completed, setCompleted] = useState(false);
   const [panel, setPanel] = useState(null);
-  const [sources, setSources] = useState(state.sources || []);\n  const [courseNodes, setCourseNodes] = useState(state.courseNodes || []);
+  const [sources, setSources] = useState(state.sources || []);
+  const [courseNodes, setCourseNodes] = useState(state.courseNodes || []);
   const [questionState, setQuestionState] = useState({ index: 0, selected: null, score: 0, attempts: 0 });
 
   useEffect(() => {
@@ -110,7 +111,8 @@ function App() {
         <div className="quick-tools">
           <button onClick={() => setPanel("sources")}><FileText size={16}/> Sources</button>
           <button onClick={() => setPanel("mcq")}><CircleHelp size={16}/> Practice MCQs</button>
-          <button onClick={() => setPanel("readiness")}><BarChart3 size={16}/> Readiness</button>\n          <button onClick={() => setPanel("course")}><BookOpen size={16}/> Course & Revision</button>
+          <button onClick={() => setPanel("readiness")}><BarChart3 size={16}/> Readiness</button>
+          <button onClick={() => setPanel("course")}><BookOpen size={16}/> Course & Revision</button>
         </div>
       </aside>
 
@@ -133,7 +135,8 @@ function App() {
 
       {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} onClose={() => setPanel(null)} />}
       {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} onClose={() => setPanel(null)} />}
-      {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} onClose={() => setPanel(null)} />}\n      {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} setState={setState} onClose={() => setPanel(null)} />}
+      {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} onClose={() => setPanel(null)} />}
+      {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} setState={setState} onClose={() => setPanel(null)} />}
       {session && (
         <div className="session-overlay">
           <div className="session-card">
