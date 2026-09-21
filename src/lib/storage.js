@@ -1,10 +1,11 @@
-const STORAGE_KEY = "pp-study-state-v2";
+const STORAGE_KEY = "pp-study-state-v3";
 
 export const initialState = {
   sessions: [],
   sources: [],
+  attempts: [],
   activeMission: "dashboard",
-  version: 2,
+  version: 3,
 };
 
 export function loadState() {
@@ -16,6 +17,7 @@ export function loadState() {
       ...parsed,
       sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [],
       sources: Array.isArray(parsed.sources) ? parsed.sources : [],
+      attempts: Array.isArray(parsed.attempts) ? parsed.attempts : [],
     };
   } catch {
     return initialState;
@@ -25,7 +27,7 @@ export function loadState() {
 export function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
     ...state,
-    version: 2,
+    version: 3,
   }));
 }
 
