@@ -273,7 +273,11 @@ function SourcePanel({ sources, setSources, onClose }) {
 }
 
 function McqPanel({ questionState, setQuestionState, setState, missionId, onClose }) {
-  const missionQuestions = demoQuestions.filter((item) => item.missionId === missionId);
+  const [difficulty, setDifficulty] = useState("all");
+  const [topicId, setTopicId] = useState("all");
+  const baseQuestions = demoQuestions.filter((item) => item.missionId === missionId);
+  const topicOptions = [...new Set(baseQuestions.map((item) => item.topicId))];
+  const missionQuestions = baseQuestions.filter((item) => (difficulty === "all" || item.difficulty === difficulty) && (topicId === "all" || item.topicId === topicId));
   const q = missionQuestions.length ? missionQuestions[questionState.index % missionQuestions.length] : null;
   const answered = questionState.selected !== null;
   const choose = (optionId) => {
@@ -317,6 +321,7 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, onClos
   return <div className="tool-overlay"><div className="tool-card">
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2>
+    <div className="form-row mcq-filters"><select value={difficulty} onChange={(e)=>{setDifficulty(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All difficulty</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><select value={topicId} onChange={(e)=>{setTopicId(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All topics</option>{topicOptions.map((id)=><option key={id} value={id}>{id}</option>)}</select></div>
     <div className="question-meta">Question {questionState.index + 1} / {missionQuestions.length} · Score {questionState.score}/{questionState.attempts}</div>
     <h3>{q.stem}</h3>
     <div className="options">{q.options.map((o)=><button key={o.id} className={answered ? (o.id===q.correctOptionId ? "option correct" : o.id===questionState.selected ? "option wrong" : "option") : "option"} onClick={()=>choose(o.id)}>{o.id.toUpperCase()}. {o.text}</button>)}</div>
