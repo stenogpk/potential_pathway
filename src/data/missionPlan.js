@@ -1,0 +1,2 @@
+export function missionSessionOptions(mission) { return [10, 30, mission.defaultMinutes, 60].filter((minutes, index, list) => minutes > 0 && list.indexOf(minutes) === index).sort((a, b) => a - b); }
+export function crossMissionSuggestion(activeMissionId, missions) { const next = missions.find((m) => m.status === "active" && m.id !== activeMissionId); return next ? { missionId: next.id, title: next.title, minutes: next.defaultMinutes } : null; }
