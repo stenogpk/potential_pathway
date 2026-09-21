@@ -1,3 +1,5 @@
+const allowedQuestionTypes = new Set(["concept", "fact", "application", "pyq"]);
+
 export function validateGroundedQuestion(question, sourceIds = [], chunkIds = []) {
   if (!question?.id || !question?.missionId || !question?.topicId || !String(question.stem || "").trim()) {
     return { valid: false, reason: "Question identity, topic or stem is incomplete." };
@@ -7,6 +9,12 @@ export function validateGroundedQuestion(question, sourceIds = [], chunkIds = []
   }
   if (!question.options.some((option) => option.id === question.correctOptionId)) {
     return { valid: false, reason: "Correct option does not exist in the option list." };
+  }
+  if (!allowedQuestionTypes.has(question.questionType || "concept")) {
+    return { valid: false, reason: "Question type is unsupported." };
+  }
+  if ((question.questionType || "concept") === "pyq" && !Number.isInteger(question.pyq?.year)) {
+    return { valid: false, reason: "PYQ requires a valid year." };
   }
   if (!Array.isArray(question.sourceRefs) || question.sourceRefs.length === 0) {
     return { valid: false, reason: "Question has no source reference." };
