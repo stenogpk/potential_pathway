@@ -1,4 +1,5 @@
 const STORAGE_KEY = "pp-study-state-v5";
+const LEGACY_STORAGE_KEY = "pp-study-state-v4";
 
 export const initialState = {
   sessions: [],
@@ -8,12 +9,13 @@ export const initialState = {
   courseNodes: [],
   contentChunks: [],
   activeMission: "dashboard",
-  version: 4,
+  version: 5,
 };
 
 export function loadState() {
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
     if (!parsed || typeof parsed !== "object") return initialState;
     return {
       ...initialState,
