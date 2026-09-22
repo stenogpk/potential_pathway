@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'services/source_service.dart';
 import 'study_store.dart';
 import 'ai_service.dart';
+import 'adaptive_engine.dart';
 
 const missions = <Map<String, Object>>[
   {'id':'pcs','title':'PCS / GS','subtitle':'Primary Mission','active':true,'minutes':50},
@@ -186,13 +187,13 @@ class Dashboard extends StatelessWidget {
       padding:const EdgeInsets.all(18),
       children:[
         Card(child:Padding(padding:const EdgeInsets.all(20),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          const Chip(label:Text("TODAY'S PATHWAY")),
+          const Chip(label:Text("TODAY'S ADAPTIVE PATHWAY")),
           const SizedBox(height:6),
-          const Text('Build readiness, not just hours.',style:TextStyle(fontSize:24,fontWeight:FontWeight.w800)),
+          const Text('You choose the time. The app chooses the course.',style:TextStyle(fontSize:24,fontWeight:FontWeight.w800)),
           const SizedBox(height:6),
-          const Text('Learn → Practice → Revise → Analyse → Retain.'),
+          const Text('Your available minutes, exam deadline, growth, weak areas and revision history drive today\'s plan.'),
           const SizedBox(height:14),
-          Wrap(spacing:8,children:[60,50,30,10].map((m)=>OutlinedButton.icon(onPressed:()=>startSession(context,store,missionId,m),icon:const Icon(Icons.play_arrow,size:16),label:Text(m.toString()+' min'))).toList()),
+          FilledButton.icon(onPressed:()=>startAdaptiveSession(context,store,missionId),icon:const Icon(Icons.psychology_alt),label:const Text("Plan today's study time")),
         ]))),
         const SizedBox(height:12),
         Row(children:[
@@ -215,18 +216,7 @@ class Dashboard extends StatelessWidget {
             onTap:m['active']==true?()=>onMission(m['id'].toString()):null,
           )),
         ),
-        Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
-          Text('NEXT STUDY BLOCK • '+mission(missionId)['title'].toString(),style:TextStyle(fontSize:11,color:Theme.of(context).colorScheme.primary,fontWeight:FontWeight.w800)),
-          const SizedBox(height:8),
-          const Text('Adaptive plan',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800)),
-          const SizedBox(height:4),
-          Text(sources.toString()+' source(s) • '+chunks.toString()+' indexed evidence chunk(s)'),
-          const SizedBox(height:10),
-          if(due>0) const ListTile(contentPadding:EdgeInsets.zero,leading:CircleAvatar(child:Text('1')),title:Text('Due revision — 15 min')),
-          if(chunks>0) const ListTile(contentPadding:EdgeInsets.zero,leading:CircleAvatar(child:Text('2')),title:Text('Source recall — 15 min')),
-          const ListTile(contentPadding:EdgeInsets.zero,leading:CircleAvatar(child:Text('3')),title:Text('Adaptive MCQ practice — 15 min')),
-          const ListTile(contentPadding:EdgeInsets.zero,leading:CircleAvatar(child:Text('4')),title:Text('Weak-topic re-test — 5 min')),
-        ]))),
+        AdaptivePreview(store:store,missionId:missionId,sources:sources,chunks:chunks,due:due),
       ],
     );
   }
@@ -239,6 +229,65 @@ class Metric extends StatelessWidget {
 }
 
 Future<void> startSession(BuildContext context,StudyStore store,String missionId,int minutes)=>showDialog(context:context,builder:(_)=>SessionDialog(store:store,missionId:missionId,minutes:minutes));
+
+Future<void> startAdaptiveSession(BuildContext context,StudyStore store,String missionId) async {
+  final result=await showDialog<int>(context:context,builder:(_)=>const TimeChoiceDialog());
+  if(result==null||result<=0)return;
+  final raw=mission(missionId)['examDate'];
+  final exam=raw==null?null:DateTime.tryParse(raw.toString());
+  final plan=AdaptiveEngine.build(state:store.state,missionId:missionId,availableMinutes:result,examDate:exam);
+  if(!context.mounted)return;
+  await showDialog(context:context,builder:(_)=>AdaptivePlanDialog(store:store,missionId:missionId,plan:plan));
+}
+
+class TimeChoiceDialog extends StatelessWidget {
+  const TimeChoiceDialog({super.key});
+  @override Widget build(BuildContext context)=>AlertDialog(
+    title:const Text('आज आपके पास कितना समय है?'),
+    content:Wrap(spacing:8,runSpacing:8,children:[10,15,20,30,45,60].map((m)=>ChoiceChip(label:Text(m.toString()+' min'),selected:false,onSelected:(_)=>Navigator.pop(context,m))).toList()),
+    actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Cancel'))],
+  );
+}
+
+class AdaptivePreview extends StatelessWidget {
+  final StudyStore store; final String missionId; final int sources,chunks,due;
+  const AdaptivePreview({super.key,required this.store,required this.missionId,required this.sources,required this.chunks,required this.due});
+  @override Widget build(BuildContext context){
+    final raw=mission(missionId)['examDate'];
+    final exam=raw==null?null:DateTime.tryParse(raw.toString());
+    final plan=AdaptiveEngine.build(state:store.state,missionId:missionId,availableMinutes:30,examDate:exam);
+    return Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text('NEXT STUDY BLOCK • '+mission(missionId)['title'].toString(),style:TextStyle(fontSize:11,color:Theme.of(context).colorScheme.primary,fontWeight:FontWeight.w800)),
+      const SizedBox(height:8),
+      const Text('Adaptive engine',style:TextStyle(fontSize:18,fontWeight:FontWeight.w800)),
+      const SizedBox(height:4),
+      Text(plan.remainingDays>0?plan.remainingDays.toString()+' days remaining • '+plan.remainingTopics.toString()+' topics remaining':'Exam deadline not set for this mission'),
+      Text(sources.toString()+' source(s) • '+chunks.toString()+' indexed evidence chunk(s) • '+due.toString()+' revision(s) due'),
+      const SizedBox(height:8),Text(plan.message),
+      const SizedBox(height:8),
+      for(final b in plan.blocks)ListTile(contentPadding:EdgeInsets.zero,dense:true,leading:Icon(b.icon),title:Text(b.title),trailing:Text(b.minutes.toString()+' min')),
+      const SizedBox(height:4),
+      const Text('Preview uses 30 minutes. Starting a session asks your actual available time and recalculates the plan.'),
+    ])));
+  }
+}
+
+class AdaptivePlanDialog extends StatelessWidget {
+  final StudyStore store; final String missionId; final AdaptivePlan plan;
+  const AdaptivePlanDialog({super.key,required this.store,required this.missionId,required this.plan});
+  @override Widget build(BuildContext context)=>AlertDialog(
+    title:const Text('आज का रास्ता तैयार है'),
+    content:SizedBox(width:500,child:SingleChildScrollView(child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[
+      Text(plan.availableMinutes.toString()+' min available',style:const TextStyle(fontSize:18,fontWeight:FontWeight.w800)),
+      if(plan.remainingDays>0)Text(plan.remainingDays.toString()+' days remaining • '+plan.remainingTopics.toString()+' topics remaining'),
+      const SizedBox(height:8),Text(plan.message),
+      const SizedBox(height:10),
+      for(final b in plan.blocks)ListTile(contentPadding:EdgeInsets.zero,leading:Icon(b.icon),title:Text(b.title),trailing:Text(b.minutes.toString()+' min')),
+    ]))),
+    actions:[TextButton(onPressed:()=>Navigator.pop(context),child:const Text('Close')),FilledButton(onPressed:(){Navigator.pop(context);startSession(context,store,missionId,plan.availableMinutes);},child:const Text('Start now'))],
+  );
+}
+
 
 class SessionDialog extends StatefulWidget{
   final StudyStore store; final String missionId; final int minutes;
