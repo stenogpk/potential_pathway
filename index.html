@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#111827" />
     <meta name="description" content="PP — Potential Pathway, an AI-powered exam preparation system." />
-    <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="icon" href="./icon-192.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon-192.svg" type="image/svg+xml" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -21,25 +21,31 @@
     </div>
     <script>
       (function () {
-        function showError(message) {
+        function showError(title, detail) {
           var el = document.getElementById("startup-status");
           if (!el) return;
           el.innerHTML =
             "<strong>Potential Pathway</strong>" +
-            "<div style='margin-top:12px;color:#b91c1c'>App startup error</div>" +
+            "<div style='margin-top:12px;color:#b91c1c'>" + title + "</div>" +
             "<pre style='white-space:pre-wrap;margin-top:8px;font-size:12px'>" +
-            String(message || "Unknown error") +
+            String(detail || "Unknown startup error") +
             "</pre>";
         }
         window.addEventListener("error", function (event) {
-          showError(event.error && event.error.stack ? event.error.stack : event.message);
+          showError("App startup error", event.error && event.error.stack ? event.error.stack : event.message);
         });
         window.addEventListener("unhandledrejection", function (event) {
           var reason = event.reason;
-          showError(reason && reason.stack ? reason.stack : reason);
+          showError("App startup error", reason && reason.stack ? reason.stack : reason);
         });
+        window.setTimeout(function () {
+          var root = document.getElementById("root");
+          if (root && root.children.length === 1 && root.firstElementChild && root.firstElementChild.id === "startup-status") {
+            showError("JavaScript bundle did not start", "The Android WebView loaded index.html but did not execute the React bundle.");
+          }
+        }, 7000);
       })();
     </script>
-    <script type="module" src="./src/main.jsx"></script>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
