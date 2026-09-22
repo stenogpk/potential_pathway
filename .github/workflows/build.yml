@@ -1,70 +1,107 @@
-name: PP CI
+name: Potential Pathway APK
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
+    paths:
+      - "lib/**"
+      - "pubspec.yaml"
+      - "analysis_options.yaml"
+      - ".github/workflows/build.yml"
+      - "README.md"
+
+concurrency:
+  group: potential-pathway-apk-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
-  validate-data:
-    name: Validate data models
+  build-apk:
+    name: Build latest APK
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm install
-      - run: npm run validate
-      - run: npm run validate:course-builder
-      - run: npm run validate:backup-manager
-      - run: npm run validate:course-engine-v2
-      - run: npm run validate:course-builder
-      - run: npm run validate:source-grounded-mcq
-      - run: npm run validate:selection-engine
-      - run: npm run validate:source-grounded-mcq
-      - run: npm run validate:pyq-retention
-      - run: npm run validate:selection-loop-v2
-      - run: npm run validate:external-evidence
-      - run: npm run validate:end-to-end
-      - run: npm run validate:evidence-pipeline
-      - run: npm run validate:trusted-sources
-      - run: npm run validate:question-authoring
-      - run: npm run validate:retention-ui
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  production-build:
-    name: Production build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Set up Flutter stable
+        uses: subosito/flutter-action@v2
         with:
-          node-version: 20
-      - run: npm install
-      - run: npm run build
+          flutter-version: "3.47.2"
+          channel: stable
+          cache: true
 
-  repository-smoke:
-    name: Repository smoke check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-      - run: npm install
-      - run: node -e "const p=require('./package.json'); if(!p.scripts.build||!p.scripts.validate) process.exit(1); console.log('Package scripts OK')"
+      - name: Toolchain
+        run: |
+          flutter --version
+          flutter doctor -v
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
 
-  source-tree-check:
-    name: Source tree check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Generate native Android shell
+        run: |
+          rm -rf .flutter_build_app
+          flutter create .flutter_build_app --platforms=android --org=com.potentialpathway --project-name=potential_pathway --no-pub
+
+      - name: Inject Flutter application
+        run: |
+          rm -rf .flutter_build_app/lib
+          cp -R lib .flutter_build_app/lib
+          cp pubspec.yaml .flutter_build_app/pubspec.yaml
+          cp analysis_options.yaml .flutter_build_app/analysis_options.yaml
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path(".flutter_build_app/android/app/build.gradle.kts")
+          s = p.read_text()
+          s = s.replace('applicationId = "com.potentialpathway.potential_pathway"', 'applicationId = "com.potentialpathway.app"')
+          p.write_text(s)
+          PY
+
+      - name: Verify Flutter project
+        working-directory: .flutter_build_app
+        run: flutter pub get
+
+      - name: Test application
+        working-directory: .flutter_build_app
+        run: flutter test
+
+      - name: Build release APK
+        working-directory: .flutter_build_app
+        run: |
+          flutter build apk --release \
+            --build-name="1.0.${{ github.run_number }}" \
+            --build-number="${{ github.run_number }}"
+
+      - name: Upload only current APK
+        uses: actions/upload-artifact@v4
         with:
-          node-version: 20
-      - run: npm install
-      - run: npm run validate
+          name: potential-pathway-latest-apk
+          path: .flutter_build_app/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+          overwrite: true
+          retention-days: 7
+
+      - name: Remove superseded APK artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          current="${{ github.run_id }}"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.name=="potential-pathway-latest-apk") | [.id,.workflow_run.id] | @tsv' |
+          while IFS=$'\t' read -r artifact_id workflow_run_id; do
+            [ -z "${artifact_id}" ] && continue
+            if [ "${workflow_run_id}" != "${current}" ]; then
+              gh api --method DELETE "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
+            fi
+          done
+
+      - name: Build summary
+        run: |
+          echo "### Potential Pathway" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Native Flutter Android APK" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Build number: ${{ github.run_number }}" >> "${GITHUB_STEP_SUMMARY}"
+          echo "Application id: com.potentialpathway.app" >> "${GITHUB_STEP_SUMMARY}"
+          echo "New pushes cancel older in-progress APK builds." >> "${GITHUB_STEP_SUMMARY}"

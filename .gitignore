@@ -1,6 +1,10 @@
-node_modules
-dist
-.env
-.env.*
-!.env.example
-.DS_Store
+.dart_tool/
+.packages
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+.idea/
+.vscode/
+*.iml

@@ -1,72 +1,24 @@
-# PP — Potential Pathway
+# Potential Pathway — Flutter Android
 
-**AI-Powered Exam Preparation System**
+Potential Pathway is rebuilt as a native Flutter Android application. The APK is produced directly by GitHub Actions using Flutter stable and the Android SDK; there is no Capacitor/WebView runtime in this build.
 
-PP is a source-grounded, adaptive exam-preparation application built around one objective: turning study activity into measurable exam readiness.
+Core flow:
+Source -> Learn -> Recall -> Practice -> PYQ -> Analyse -> Revise -> Re-test -> Retain -> Readiness
 
-## Candidate workflow
+Included:
+- PCS / GS and PGT Chemistry missions; RO / ARO remains Coming Soon
+- local device persistence
+- PDF/TXT/MD source picking
+- on-device PDF text extraction and evidence chunks
+- source-first AI Study Chat
+- external-verification queue and evidence provenance
+- source-grounded course builder
+- MCQ practice, adaptive selection, scoring and revision cards
+- Subject -> Topic -> Subtopic course tree
+- readiness metrics
+- backup and restore
+- native APK build with automatic cancellation of superseded builds
 
-**Source → Learn → Recall → Practice → PYQ → Analyse → Revise → Re-test → Retain → Readiness**
+The PDF dependency is Syncfusion Flutter PDF. The current package documentation supports loading PDF bytes and extracting text with PdfTextExtractor. The package documentation states that a Syncfusion commercial or free Community license is required.
 
-The app now includes the working selection loop rather than demo-only placeholders.
-
-## Missions
-
-- 🎯 **PCS / GS** — Primary Mission
-- 🧪 **PGT Chemistry** — Secondary Mission
-- 📚 **RO / ARO** — separate pathway / coming soon
-- ✍️ Mains workflow can be added as a separate mission without mixing question banks.
-
-## Implemented
-
-- Responsive candidate dashboard and mission navigation
-- Local persistent study state
-- PDF/TXT/Markdown source ingestion and searchable evidence chunks
-- Source lifecycle and backup/restore
-- Source-grounded course generation with evidence provenance
-- Evidence hierarchy: user source, official, trusted external, secondary, model-only
-- External evidence verification workflow
-- Grounded MCQ authoring and duplicate/evidence admission gates
-- Concept, fact, application and PYQ question types
-- PYQ metadata, filtering and exposure tracking
-- Adaptive question selection
-- Real MCQ timing
-- Attempt scoring and error classification
-- Revision state machine and retention scheduling
-- Adaptive study planner
-- Readiness metrics and weak-topic signals
-- Candidate-facing Question Studio
-- Source-grounded Mock Test mode
-- Source-grounded AI Draft Lab contract
-- End-to-end selection-loop validation
-- GitHub Actions validation gates
-
-## AI safety / source integrity
-
-PP does not silently convert model knowledge into verified exam evidence.
-
-When indexed source evidence is available, AI draft requests are constrained to that evidence and retain source/chunk references. When evidence is missing, the workflow blocks rather than inventing facts and can route the topic to external verification.
-
-The current AI Draft Lab prepares and validates a grounded AI request. A server-side LLM provider is intentionally not hard-coded into the static PWA.
-
-## Important content rule
-
-Official notifications and user-provided source documents are authoritative for configured exam facts. Detailed syllabus content must be supplied from an authoritative source before it is loaded into the course. Unsupported syllabus details are not invented.
-
-## Validation
-
-The repository has focused validation for source ingestion, evidence, course, MCQ, PYQ, retention, adaptive practice, external verification and the complete selection workflow.
-
-Before a release, run:
-
-`npm install`
-`npm run build`
-`npm run validate`
-
-GitHub Actions runs the full configured validation gates on the main branch.
-
-## Development principle
-
-PP is not a generic productivity app. Features are kept only when they support selection readiness: coverage, practice, error recovery, retention, PYQ exposure and measurable readiness.
-
-**Developed by Shartendu**
+Android updates use the same application id (com.potentialpathway.app) and a monotonically increasing build number from the GitHub run number.
