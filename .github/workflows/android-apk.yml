@@ -32,14 +32,13 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Install Capacitor
+      - name: Install Capacitor 7
         run: npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
 
       - name: Create Android project
         run: |
-          npx cap init "Potential Pathway" "com.potentialpathway.app" --web-dir dist
           npx cap add android
-          npx cap copy android
+          npx cap sync android
 
       - name: Build debug APK
         working-directory: android
