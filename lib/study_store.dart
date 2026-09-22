@@ -11,7 +11,6 @@ Map<String, dynamic> initialState() => {
   'sources': <Map<String, dynamic>>[],
   'chunks': <Map<String, dynamic>>[],
   'courses': <Map<String, dynamic>>[],
-  'nodes': <Map<String, dynamic>>[],
   'attempts': <Map<String, dynamic>>[],
   'revisions': <Map<String, dynamic>>[],
   'verificationRequests': <Map<String, dynamic>>[],
