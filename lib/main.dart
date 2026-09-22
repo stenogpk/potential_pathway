@@ -350,7 +350,112 @@ class _QuestionStudioState extends State<QuestionStudio>{
   @override void dispose(){for(final x in[stem,topic,a,b,c,d,year,exam,paper])x.dispose();super.dispose();}
   void add(){final opts=[{'id':'a','text':a.text.trim()},{'id':'b','text':b.text.trim()},{'id':'c','text':c.text.trim()},{'id':'d','text':d.text.trim()}];if(stem.text.trim().isEmpty||opts.any((x)=>(x['text'] as String).isEmpty)||sourceId==null||chunkId==null){_msg('Stem, all options, source and chunk are required.');return;}if(type=='pyq'&&int.tryParse(year.text.trim())==null){_msg('PYQ requires a year.');return;}final q=listRows(widget.store.state,'questions');q.insert(0,{'id':newId('question'),'missionId':widget.missionId,'subjectId':'custom','topicId':topic.text.trim().isEmpty?'general':topic.text.trim(),'questionType':type,'sourceRefs':[sourceId],'sourceChunkRefs':[chunkId],'stem':stem.text.trim(),'options':opts,'correctOptionId':opts[correct]['id'],'explanation':'Answer is grounded in the selected source chunk.','difficulty':difficulty,'pyq':{'year':int.tryParse(year.text.trim()),'exam':exam.text.trim(),'paper':paper.text.trim()}});widget.store.state['questions']=q;widget.store.save();widget.store.notifyListeners();_msg('Source-grounded question added.');stem.clear();for(final x in[a,b,c,d])x.clear();}
   void _msg(String s)=>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));
-  @override Widget build(BuildContext context){final sources=listRows(widget.store.state,'sources').where((x)=>x['missionId']==widget.missionId).toList();final chunks=listRows(widget.store.state,'chunks').where((x)=>x['missionId']==widget.missionId&&(sourceId==null||x['sourceId']==sourceId)).toList();return Scaffold(appBar:AppBar(title:const Text('Question Studio')),body:ListView(padding:const EdgeInsets.all(16),children:[const Text('Validate & add a source-grounded MCQ',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800)),const SizedBox(height:8),const Text('A question is admitted only with a source and source-chunk reference.'),const SizedBox(height:14),Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(children:[DropdownButtonFormField<String>(value:type,items:const['concept','fact','application','pyq'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>setState(()=>type=v??'concept'),decoration:const InputDecoration(labelText:'Question type')),TextField(controller:topic,decoration:const InputDecoration(labelText:'Topic')),DropdownButtonFormField<String>(value:difficulty,items:const['easy','medium','hard'].map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),onChanged:(v)=>setState(()=>difficulty=v??'medium'),decoration:const InputDecoration(labelText:'Difficulty')),TextField(controller:stem,maxLines:3,decoration:const InputDecoration(labelText:'Question stem')),for(final e in[['A',a],['B',b],['C',c],['D',d]])TextField(controller:e[1] as TextEditingController,decoration:InputDecoration(labelText:'Option '+e[0].toString())),DropdownButtonFormField<int>(value:correct,items:const[DropdownMenuItem(value:0,child:Text('A')),DropdownMenuItem(value:1,child:Text('B')),DropdownMenuItem(value:2,child:Text('C')),DropdownMenuItem(value:3,child:Text('D'))],onChanged:(v)=>setState(()=>correct=v??0),decoration:const InputDecoration(labelText:'Correct option')),DropdownButtonFormField<String>(value:sourceId,items:[const DropdownMenuItem<String>(value:null,child:Text('Select source')),...sources.map((x)=>DropdownMenuItem(value:x['id'].toString(),child:Text(x['title'].toString())))],onChanged:(v)=>setState(() { sourceId=v; chunkId=null; }),decoration:const InputDecoration(labelText:'Source')),DropdownButtonFormField<String>(value:chunkId,items:[const DropdownMenuItem<String>(value:null,child:Text('Select source chunk')),...chunks.map((x)=>DropdownMenuItem(value:x['id'].toString(),child:Text(x['id'].toString())))],onChanged:(v)=>setState(()=>chunkId=v),decoration:const InputDecoration(labelText:'Source chunk')),if(type=='pyq')... [TextField(controller:year,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'PYQ year')),TextField(controller:exam,decoration:const InputDecoration(labelText:'PYQ exam')),TextField(controller:paper,decoration:const InputDecoration(labelText:'PYQ paper'))],const SizedBox(height:12),SizedBox(width:double.infinity,child:FilledButton(onPressed:add,child:const Text('Validate & Add')))]))]));}
+  @override
+  Widget build(BuildContext context){
+    final sources=listRows(widget.store.state,'sources')
+        .where((x)=>x['missionId']==widget.missionId)
+        .toList();
+    final chunks=listRows(widget.store.state,'chunks')
+        .where((x)=>x['missionId']==widget.missionId && (sourceId==null || x['sourceId']==sourceId))
+        .toList();
+
+    return Scaffold(
+      appBar:AppBar(title:const Text('Question Studio')),
+      body:ListView(
+        padding:const EdgeInsets.all(16),
+        children:[
+          const Text('Validate & add a source-grounded MCQ',style:TextStyle(fontSize:22,fontWeight:FontWeight.w800)),
+          const SizedBox(height:8),
+          const Text('A question is admitted only with a source and source-chunk reference.'),
+          const SizedBox(height:14),
+          Card(
+            child:Padding(
+              padding:const EdgeInsets.all(16),
+              child:Column(
+                children:[
+                  DropdownButtonFormField<String>(
+                    value:type,
+                    items:const['concept','fact','application','pyq']
+                        .map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),
+                    onChanged:(v)=>setState(() { type=v??'concept'; }),
+                    decoration:const InputDecoration(labelText:'Question type'),
+                  ),
+                  TextField(
+                    controller:topic,
+                    decoration:const InputDecoration(labelText:'Topic'),
+                  ),
+                  DropdownButtonFormField<String>(
+                    value:difficulty,
+                    items:const['easy','medium','hard']
+                        .map((x)=>DropdownMenuItem(value:x,child:Text(x))).toList(),
+                    onChanged:(v)=>setState(() { difficulty=v??'medium'; }),
+                    decoration:const InputDecoration(labelText:'Difficulty'),
+                  ),
+                  TextField(
+                    controller:stem,
+                    maxLines:3,
+                    decoration:const InputDecoration(labelText:'Question stem'),
+                  ),
+                  TextField(controller:a,decoration:const InputDecoration(labelText:'Option A')),
+                  TextField(controller:b,decoration:const InputDecoration(labelText:'Option B')),
+                  TextField(controller:c,decoration:const InputDecoration(labelText:'Option C')),
+                  TextField(controller:d,decoration:const InputDecoration(labelText:'Option D')),
+                  DropdownButtonFormField<int>(
+                    value:correct,
+                    items:const[
+                      DropdownMenuItem(value:0,child:Text('A')),
+                      DropdownMenuItem(value:1,child:Text('B')),
+                      DropdownMenuItem(value:2,child:Text('C')),
+                      DropdownMenuItem(value:3,child:Text('D')),
+                    ],
+                    onChanged:(v)=>setState(() { correct=v??0; }),
+                    decoration:const InputDecoration(labelText:'Correct option'),
+                  ),
+                  DropdownButtonFormField<String>(
+                    value:sourceId,
+                    items:[
+                      const DropdownMenuItem<String>(value:null,child:Text('Select source')),
+                      ...sources.map((x)=>DropdownMenuItem(
+                        value:x['id'].toString(),
+                        child:Text(x['title'].toString()),
+                      )),
+                    ],
+                    onChanged:(v)=>setState(() { sourceId=v; chunkId=null; }),
+                    decoration:const InputDecoration(labelText:'Source'),
+                  ),
+                  DropdownButtonFormField<String>(
+                    value:chunkId,
+                    items:[
+                      const DropdownMenuItem<String>(value:null,child:Text('Select source chunk')),
+                      ...chunks.map((x)=>DropdownMenuItem(
+                        value:x['id'].toString(),
+                        child:Text(x['id'].toString()),
+                      )),
+                    ],
+                    onChanged:(v)=>setState(() { chunkId=v; }),
+                    decoration:const InputDecoration(labelText:'Source chunk'),
+                  ),
+                  if(type=='pyq') ...[
+                    TextField(controller:year,keyboardType:TextInputType.number,decoration:const InputDecoration(labelText:'PYQ year')),
+                    TextField(controller:exam,decoration:const InputDecoration(labelText:'PYQ exam')),
+                    TextField(controller:paper,decoration:const InputDecoration(labelText:'PYQ paper')),
+                  ],
+                  const SizedBox(height:12),
+                  SizedBox(
+                    width:double.infinity,
+                    child:FilledButton(
+                      onPressed:add,
+                      child:const Text('Validate & Add'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class ExternalVerification extends StatefulWidget{final StudyStore store;final String missionId;const ExternalVerification({super.key,required this.store,required this.missionId});@override State<ExternalVerification> createState()=>_ExternalVerificationState();}
@@ -359,7 +464,48 @@ class _ExternalVerificationState extends State<ExternalVerification>{
   @override void dispose(){url.dispose();publisher.dispose();evidence.dispose();title.dispose();super.dispose();}
   Future<void> attach(Map<String,dynamic> request) async{title.text=request['topic'].toString();final ok=await showDialog<bool>(context:context,builder:(_)=>AlertDialog(title:const Text('Attach external evidence'),content:SingleChildScrollView(child:Column(mainAxisSize:MainAxisSize.min,children:[TextField(controller:title,decoration:const InputDecoration(labelText:'Title')),TextField(controller:publisher,decoration:const InputDecoration(labelText:'Publisher')),TextField(controller:url,decoration:const InputDecoration(labelText:'HTTPS URL')),TextField(controller:evidence,maxLines:8,decoration:const InputDecoration(labelText:'Evidence text'))])),actions:[TextButton(onPressed:()=>Navigator.pop(context,false),child:const Text('Cancel')),FilledButton(onPressed:()=>Navigator.pop(context,true),child:const Text('Save'))]));if(ok!=true)return;final link=url.text.trim();final host=Uri.tryParse(link)?.host.toLowerCase()??'';final trusted=link.startsWith('https://')&&(host.endsWith('.gov.in')||host.endsWith('.nic.in')||host.endsWith('.ac.in')||host=='upsc.gov.in'||host=='uppsc.up.nic.in');if(!trusted||evidence.text.trim().isEmpty){_msg('Use an HTTPS trusted-domain URL and provide evidence text.');return;}final sid=newId('external');final ss=listRows(widget.store.state,'sources');ss.insert(0,{'id':sid,'missionId':widget.missionId,'title':title.text.trim(),'type':'external-url','status':'verified','authority':'trusted-external','evidenceLayer':'trusted-external','url':link,'publisher':publisher.text.trim(),'addedAt':DateTime.now().toIso8601String()});final ch=listRows(widget.store.state,'chunks');final parts=_chunk(evidence.text);for(var i=0;i<parts.length;i++)ch.add({'id':sid+':external-'+(i+1).toString(),'sourceId':sid,'missionId':widget.missionId,'locator':link+'#evidence-'+(i+1).toString(),'text':parts[i],'order':i,'evidenceLayer':'trusted-external','sourceUrl':link,'publisher':publisher.text.trim()});final req=listRows(widget.store.state,'verificationRequests');final updated=Map<String,dynamic>.from(request);updated['status']='verified-evidence-attached';updated['sourceId']=sid;widget.store.state['sources']=ss;widget.store.state['chunks']=ch;widget.store.state['verificationRequests']=req.map((x)=>x['id']==request['id']?updated:x).toList();await widget.store.save();widget.store.notifyListeners();_msg('External evidence attached and indexed.');}
   void _msg(String s)=>ScaffoldMessenger.of(context).showSnackBar(SnackBar(content:Text(s)));
-  @override Widget build(BuildContext context){final req=listRows(widget.store.state,'verificationRequests').where((x)=>x['missionId']==widget.missionId).toList();return Scaffold(appBar:AppBar(title:const Text('External Verification')),body:ListView(padding:const EdgeInsets.all(16),children:[const Text('Verification queue',style:TextStyle(fontSize:24,fontWeight:FontWeight.w800)),const SizedBox(height:6),const Text('Missing source evidence is queued here instead of being guessed.'),const SizedBox(height:14),if(req.isEmpty)const _Empty(text:'No verification requests.')else for(final x in req)Card(child:ListTile(title:Text(x['topic'].toString()),subtitle:Text(x['status'].toString()),trailing:FilledButton(onPressed:()=>attach(x),child:const Text('Attach')))),const SizedBox(height:12),const Card(child:Padding(padding:EdgeInsets.all(12),child:Text('The app records the URL and evidence text. Domain allowlisting is a guard, not independent authentication of the copied content.')))]);}
+  @override
+  Widget build(BuildContext context){
+    final req=listRows(widget.store.state,'verificationRequests')
+        .where((x)=>x['missionId']==widget.missionId)
+        .toList();
+
+    return Scaffold(
+      appBar:AppBar(title:const Text('External Verification')),
+      body:ListView(
+        padding:const EdgeInsets.all(16),
+        children:[
+          const Text('Verification queue',style:TextStyle(fontSize:24,fontWeight:FontWeight.w800)),
+          const SizedBox(height:6),
+          const Text('Missing source evidence is queued here instead of being guessed.'),
+          const SizedBox(height:14),
+          if(req.isEmpty)
+            const _Empty(text:'No verification requests.')
+          else
+            for(final x in req)
+              Card(
+                child:ListTile(
+                  title:Text(x['topic'].toString()),
+                  subtitle:Text(x['status'].toString()),
+                  trailing:FilledButton(
+                    onPressed:()=>attach(x),
+                    child:const Text('Attach'),
+                  ),
+                ),
+              ),
+          const SizedBox(height:12),
+          const Card(
+            child:Padding(
+              padding:EdgeInsets.all(12),
+              child:Text(
+                'The app records the URL and evidence text. Domain allowlisting is a guard, not independent authentication of copied content.',
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class Backup extends StatefulWidget{final StudyStore store;const Backup({super.key,required this.store});@override State<Backup> createState()=>_BackupState();}
