@@ -333,7 +333,7 @@ function ExternalVerificationPanel({ missionId, requests, setState, setSources, 
     try {
       const verified = markExternalVerification(source, {
         verifiedBy: "user-verified-external-evidence",
-        note: \`Verified for \${request.topic} (\${request.claimType}).\`,
+        note: `Verified for ${request.topic} (${request.claimType}).`,
       });
       const ingested = ingestExternalEvidence({ source: verified, text: evidence });
       setSources((current) => [verified, ...current]);
@@ -344,7 +344,7 @@ function ExternalVerificationPanel({ missionId, requests, setState, setSources, 
           item === request ? { ...item, status: "verified", verifiedSourceId: verified.id, verifiedAt: Date.now() } : item
         ),
       }));
-      setMessage(\`Verified external evidence added: \${ingested.chunkCount} chunk(s). It is labeled as external evidence.\`);
+      setMessage(`Verified external evidence added: ${ingested.chunkCount} chunk(s). It is labeled as external evidence.`);
     } catch (error) {
       setMessage(error.message || "External evidence could not be ingested.");
     }
@@ -355,7 +355,7 @@ function ExternalVerificationPanel({ missionId, requests, setState, setSources, 
     <p className="eyebrow">EVIDENCE GATE</p><h2>External Verification</h2>
     <p className="muted">When the PDF/source is insufficient, PP pauses generation. Add evidence copied from an allowed official/trusted source; PP will label and index it rather than treating model knowledge as verified.</p>
     {pending.length ? <div className="form-row">
-      <select value={selectedIndex} onChange={(e)=>setSelectedIndex(Number(e.target.value))}>{pending.map((item,index)=><option key={\`\${item.topic}-\${index}\`} value={index}>{item.topic} · {item.claimType}</option>)}</select>
+      <select value={selectedIndex} onChange={(e)=>setSelectedIndex(Number(e.target.value))}>{pending.map((item,index)=><option key={`${item.topic}-${index}`} value={index}>{item.topic} · {item.claimType}</option>)}</select>
       <input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Source title" />
       <input value={publisher} onChange={(e)=>setPublisher(e.target.value)} placeholder="Publisher / authority" />
       <input value={url} onChange={(e)=>setUrl(e.target.value)} placeholder="Official/trusted source URL" />
