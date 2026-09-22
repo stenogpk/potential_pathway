@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#111827" />
+    <meta name="description" content="PP — Potential Pathway, an AI-powered exam preparation system." />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon-192.svg" type="image/svg+xml" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>PP — Potential Pathway</title>
+    <!-- Browser test refresh v2 -->
+    <script>
+      (function () {
+        function showError(title, detail) {
+          var el = document.getElementById("startup-status");
+          if (!el) return;
+          el.innerHTML =
+            "<strong>Potential Pathway</strong>" +
+            "<div style='margin-top:12px;color:#b91c1c'>" + title + "</div>" +
+            "<pre style='white-space:pre-wrap;margin-top:8px;font-size:12px'>" +
+            String(detail || "Unknown startup error") +
+            "</pre>";
+        }
+        window.addEventListener("error", function (event) {
+          showError("Application startup error", event.error && event.error.stack ? event.error.stack : event.message);
+        });
+        window.addEventListener("unhandledrejection", function (event) {
+          var reason = event.reason;
+          showError("Application startup error", reason && reason.stack ? reason.stack : reason);
+        });
+        window.setTimeout(function () {
+          var root = document.getElementById("root");
+          if (root && root.children.length === 1 && root.firstElementChild && root.firstElementChild.id === "startup-status") {
+            showError("Application JavaScript did not start", "The app bundle was loaded but did not render the application.");
+          }
+        }, 7000);
+      })();
+    </script>
+    <script type="module" crossorigin src="./assets/index-D-u4C-U1.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-CfLN25PL.css">
+  </head>
+  <body>
+    <div id="root">
+      <div id="startup-status" style="font-family:system-ui,sans-serif;padding:24px;color:#111827">
+        <strong>Potential Pathway</strong>
+        <div style="margin-top:8px">Loading application…</div>
+      </div>
+    </div>
+  </body>
+</html>
