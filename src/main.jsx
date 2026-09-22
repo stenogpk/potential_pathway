@@ -16,12 +16,12 @@ import { sourceStats } from "./data/sourceStats.js";
 import { prepareSource, createSourceRecord, sourceChunkCount } from "./data/sourceManager.js";
 import { searchSources } from "./data/sourceSearch.js";
 import { buildGroundedCourseDraft } from "./data/courseGeneration.js";
-import { groundedQuestionsForMission, addGroundedQuestion } from "./data/mcqBank.js";
+import { groundedQuestionsForMission, addGroundedQuestion, validateAndAdmitGroundedQuestion } from "./data/mcqBank.js";
 import { validateGroundedQuestion } from "./data/questionProvenance.js";
 import { getEvidenceLabel } from "./data/evidenceModel.js";
 import { buildBackupEnvelope, parseBackupFile, restoreBackupEnvelope } from "./data/backupManager.js";
 import { filterPyqs, buildPyqTrend } from "./data/pyqEngine.js";
-import { RETENTION_ERROR_TYPES } from "./data/retentionEngine.js";
+import { RETENTION_ERROR_TYPES, applyAttemptToRevision } from "./data/retentionEngine.js";
 import { createExternalSourceRecord, markExternalVerification, ingestExternalEvidence } from "./data/externalResearch.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
@@ -133,6 +133,7 @@ function App() {
         <div className="quick-tools">
           <button onClick={() => setPanel("sources")}><FileText size={16}/> Sources</button>
           <button onClick={() => setPanel("mcq")}><CircleHelp size={16}/> Practice MCQs</button>
+          <button onClick={() => setPanel("authoring")}><Brain size={16}/> Question Studio</button>
           <button onClick={() => setPanel("readiness")}><BarChart3 size={16}/> Readiness</button>
           <button onClick={() => setPanel("course")}><BookOpen size={16}/> Course & Revision</button>
           <button onClick={() => setPanel("revision")}><RotateCcw size={16}/> Review Queue</button>
@@ -160,6 +161,7 @@ function App() {
 
       {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} contentChunks={contentChunks} setContentChunks={setContentChunks} onClose={() => setPanel(null)} />}
       {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} missionId={active === "dashboard" ? "pcs" : active} groundedQuestions={groundedQuestions} sources={sources} contentChunks={contentChunks} onClose={() => setPanel(null)} />}
+      {panel === "authoring" && <QuestionStudio missionId={active === "dashboard" ? "pcs" : active} groundedQuestions={groundedQuestions} setGroundedQuestions={setGroundedQuestions} sources={sources} contentChunks={contentChunks} onClose={() => setPanel(null)} />}
       {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} groundedQuestions={groundedQuestions} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} sources={sources} contentChunks={contentChunks} courseContent={courseContent} setCourseContent={setCourseContent} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "revision" && <RevisionPanel revisions={state.revisions} courseNodes={courseNodes} setState={setState} onClose={() => setPanel(null)} />}
@@ -474,22 +476,13 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
       attemptedAt: Date.now(),
       errorType: null,
     };
-    setQuestionState((s) => ({
-      ...s,
-      selected: optionId,
-      attempts: s.attempts + 1,
-      lastAttemptId: attempt.id,
-      score: s.score + (isCorrect ? 1 : 0),
-    }));
+    setErrorType("");
+    setQuestionState((s) => ({ ...s, selected: optionId, attempts: s.attempts + 1, lastAttemptId: attempt.id, score: s.score + (isCorrect ? 1 : 0) }));
     setState((current) => {
       const existing = (current.revisions || []).find((r) => r.missionId === q.missionId && r.topicId === q.topicId);
       const base = existing || createRevisionCard({ missionId: q.missionId, topicId: q.topicId, sourceRefs: q.sourceRefs });
-      const revision = nextRevision(base, isCorrect);
-      return {
-        ...current,
-        attempts: [attempt, ...(current.attempts || [])].slice(0, 1000),
-        revisions: [revision, ...(current.revisions || []).filter((r) => r.id !== revision.id)].slice(0, 1000),
-      };
+      const revision = applyAttemptToRevision(base, { isCorrect, errorType: null });
+      return { ...current, attempts: [attempt, ...(current.attempts || [])].slice(0, 1000), revisions: [revision, ...(current.revisions || []).filter((r) => r.id !== revision.id)].slice(0, 1000) };
     });
   };
   if (!q) return <div className="tool-overlay"><div className="tool-card"><button className="close-session" onClick={onClose}><X /></button><p className="eyebrow">PRACTICE ENGINE</p><h2>No questions configured</h2><p className="muted">This mission needs source-backed questions before practice can begin.</p></div></div>;
@@ -508,8 +501,62 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
     <h3>{q.stem}</h3>
     <div className="options">{q.options.map((o)=><button key={o.id} className={answered ? (o.id===q.correctOptionId ? "option correct" : o.id===questionState.selected ? "option wrong" : "option") : "option"} onClick={()=>choose(o.id)}>{o.id.toUpperCase()}. {o.text}</button>)}</div>
     {answered && <div className={questionState.selected===q.correctOptionId ? "answer good" : "answer bad"}>{questionState.selected===q.correctOptionId ? q.explanation : "Not correct — review the explanation/source before moving on."}</div>}
-    {answered && questionState.selected !== q.correctOptionId && <select value={errorType} onChange={(e)=>{setErrorType(e.target.value);setState((current)=>({...current,attempts:(current.attempts||[]).map((a)=>a.id===questionState.lastAttemptId?{...a,errorType:e.target.value}:a)}));}}><option value="">Classify error…</option>{RETENTION_ERROR_TYPES.map((type)=><option key={type} value={type}>{type}</option>)}</select>}
+    {answered && questionState.selected !== q.correctOptionId && <select value={errorType} onChange={(e)=>{
+      const nextErrorType = e.target.value;
+      setErrorType(nextErrorType);
+      setState((current)=>{
+        const latestAttempt = (current.attempts||[]).find((a)=>a.id===questionState.lastAttemptId);
+        if (!latestAttempt) return current;
+        const currentRevision = (current.revisions||[]).find((r)=>r.missionId===latestAttempt.missionId && r.topicId===latestAttempt.topicId);
+        if (!currentRevision) return {...current, attempts:(current.attempts||[]).map((a)=>a.id===latestAttempt.id?{...a,errorType:nextErrorType}:a)};
+        const revised = applyAttemptToRevision(currentRevision,{isCorrect:false,errorType:nextErrorType});
+        return {...current, attempts:(current.attempts||[]).map((a)=>a.id===latestAttempt.id?{...a,errorType:nextErrorType}:a), revisions:[revised,...(current.revisions||[]).filter((r)=>r.id!==revised.id)]};
+      });
+    }}><option value="">Classify error…</option>{RETENTION_ERROR_TYPES.map((type)=><option key={type} value={type}>{type}</option>)}</select>}
     <button className="primary" onClick={next}>{answered ? "Next question" : "Skip for now"}</button>
+  </div></div>;
+}
+
+
+function QuestionStudio({ missionId, groundedQuestions, setGroundedQuestions, sources, contentChunks, onClose }) {
+  const [topicId, setTopicId] = useState("");
+  const [stem, setStem] = useState("");
+  const [explanation, setExplanation] = useState("");
+  const [questionType, setQuestionType] = useState("concept");
+  const [difficulty, setDifficulty] = useState("medium");
+  const [correctOptionId, setCorrectOptionId] = useState("a");
+  const [options, setOptions] = useState(["a","b","c","d"].map((id)=>({id,text:""})));
+  const [sourceId, setSourceId] = useState("");
+  const [chunkId, setChunkId] = useState("");
+  const [pyqYear, setPyqYear] = useState("");
+  const [pyqExam, setPyqExam] = useState("");
+  const [pyqPaper, setPyqPaper] = useState("");
+  const [message, setMessage] = useState("");
+  const missionSources = sources.filter((s)=>s.missionId===missionId);
+  const missionChunks = contentChunks.filter((c)=>c.missionId===missionId);
+  const sourceChunks = sourceId ? missionChunks.filter((c)=>c.sourceId===sourceId) : missionChunks;
+  const updateOption=(id,text)=>setOptions((current)=>current.map((o)=>o.id===id?{...o,text}:o));
+  const reset=()=>{setTopicId("");setStem("");setExplanation("");setQuestionType("concept");setDifficulty("medium");setCorrectOptionId("a");setOptions(["a","b","c","d"].map((id)=>({id,text:""})));setSourceId("");setChunkId("");setPyqYear("");setPyqExam("");setPyqPaper("");};
+  const submit=()=>{
+    const cleanStem=stem.trim(), cleanExplanation=explanation.trim();
+    if(!topicId.trim()||!cleanStem||!cleanExplanation||!sourceId||!chunkId){setMessage("Topic, question, explanation, source and source chunk are required.");return;}
+    const question={id:crypto.randomUUID(),missionId,topicId:topicId.trim(),stem:cleanStem,explanation:cleanExplanation,options,correctOptionId,questionType,difficulty,sourceRefs:[sourceId],sourceChunkRefs:[chunkId],...(questionType==="pyq"?{pyq:{year:Number(pyqYear),exam:pyqExam.trim(),paper:pyqPaper.trim()}}:{}),createdAt:Date.now()};
+    const result=validateAndAdmitGroundedQuestion(groundedQuestions,question,missionSources.map((s)=>s.id),missionChunks.map((c)=>c.id));
+    if(!result.valid){setMessage(result.reason);return;}
+    setGroundedQuestions(result.questions);setMessage("Question admitted: source evidence and provenance checks passed.");reset();
+  };
+  return <div className="tool-overlay"><div className="tool-card readiness-card">
+    <button className="close-session" onClick={onClose}><X /></button>
+    <p className="eyebrow">GROUNDED QUESTION STUDIO</p><h2>Author a verified MCQ</h2>
+    <p className="muted">Every question must point to an indexed source chunk. PP rejects missing evidence, missing explanation and duplicate stems.</p>
+    <div className="form-row"><input value={topicId} onChange={(e)=>setTopicId(e.target.value)} placeholder="Topic ID / topic name" /><select value={questionType} onChange={(e)=>setQuestionType(e.target.value)}><option value="concept">Concept</option><option value="fact">Fact</option><option value="application">Application</option><option value="pyq">PYQ</option></select><select value={difficulty} onChange={(e)=>setDifficulty(e.target.value)}><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select></div>
+    <textarea value={stem} onChange={(e)=>setStem(e.target.value)} placeholder="Question stem" rows="3" />
+    <div className="options">{options.map((option)=><div className="form-row" key={option.id}><input value={option.text} onChange={(e)=>updateOption(option.id,e.target.value)} placeholder={"Option "+option.id.toUpperCase()} /><label><input type="radio" name="correct-option" checked={correctOptionId===option.id} onChange={()=>setCorrectOptionId(option.id)} /> Correct</label></div>)}</div>
+    <textarea value={explanation} onChange={(e)=>setExplanation(e.target.value)} placeholder="Source-grounded explanation" rows="3" />
+    <div className="form-row"><select value={sourceId} onChange={(e)=>{setSourceId(e.target.value);setChunkId("");}}><option value="">Select source</option>{missionSources.map((s)=><option key={s.id} value={s.id}>{s.title}</option>)}</select><select value={chunkId} onChange={(e)=>setChunkId(e.target.value)}><option value="">Select source chunk</option>{sourceChunks.map((chunk)=><option key={chunk.id} value={chunk.id}>{chunk.locator || chunk.id}</option>)}</select></div>
+    {questionType==="pyq" && <div className="form-row"><input type="number" value={pyqYear} onChange={(e)=>setPyqYear(e.target.value)} placeholder="PYQ year" /><input value={pyqExam} onChange={(e)=>setPyqExam(e.target.value)} placeholder="Exam" /><input value={pyqPaper} onChange={(e)=>setPyqPaper(e.target.value)} placeholder="Paper" /></div>}
+    <div className="session-controls"><button className="secondary" onClick={reset}>Clear</button><button className="primary" onClick={submit}>Validate & admit question</button></div>
+    {message && <div className={message.startsWith("Question admitted")?"success-banner":"answer bad"}>{message}</div>}
   </div></div>;
 }
 
