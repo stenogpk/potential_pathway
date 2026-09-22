@@ -1,4 +1,5 @@
 import { getRevisionState } from "./revision.js";
+import { filterPyqs } from "./pyqEngine.js";
 
 function daysUntil(examDate, now = Date.now()) {
   if (!examDate) return null;
@@ -25,6 +26,9 @@ export function buildStudyPlan({
   revisions = [],
   courseNodes = [],
   contentChunks = [],
+  groundedQuestions = [],
+  sourceIds = [],
+  chunkIds = [],
   examDate = null,
   now = Date.now(),
 }) {
@@ -37,6 +41,28 @@ export function buildStudyPlan({
   );
   const hasSourceContent = contentChunks.some((chunk) => chunk.missionId === missionId && String(chunk.text || "").trim());
   const countdown = daysUntil(examDate, now);
+  const missionQuestions = groundedQuestions.filter((question) => question.missionId === missionId);
+  const validPyqs = filterPyqs(missionQuestions, { missionId }, sourceIds, chunkIds);
+  const pyqIds = new Set(validPyqs.map((question) => question.id));
+  const pyqAttempts = attempts.filter((attempt) => pyqIds.has(attempt.questionId)).length;
+  const pyqExposure = attempts.filter((attempt) => attempt.missionId === missionId).length
+    ? Math.round((pyqAttempts / attempts.filter((attempt) => attempt.missionId === missionId).length) * 100)
+    : null;
+  const errorTypes = new Map();
+  attempts.filter((attempt) => attempt.missionId === missionId && !attempt.isCorrect).forEach((attempt) => {
+    const type = attempt.errorType || "knowledge-gap";
+    errorTypes.set(type, (errorTypes.get(type) || 0) + 1);
+  });
+  const weakTopics = [...stats.entries()]
+    .map(([topicId, row]) => ({
+      topicId,
+      accuracy: row.attempts ? Math.round((row.correct / row.attempts) * 100) : 0,
+      attempts: row.attempts,
+    }))
+    .filter((row) => row.attempts >= 2)
+    .sort((a, b) => a.accuracy - b.accuracy || b.attempts - a.attempts);
+  const hasUnexposedPyq = validPyqs.length > 0 && pyqExposure !== 100;
+  const dominantErrorType = [...errorTypes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || null;
 
   const candidates = [
     {
@@ -46,8 +72,17 @@ export function buildStudyPlan({
     },
     {
       type: "practice",
-      priority: weakRevisions.length * 4,
-      label: weakRevisions.length ? "Re-test weak/error revision topics" : "",
+      priority: weakRevisions.length * 4 + weakTopics.length * 3,
+      label: weakRevisions.length
+        ? "Re-test weak/error revision topics"
+        : weakTopics[0]
+          ? `Re-test weak topic: ${weakTopics[0].topicId}`
+          : "",
+    },
+    {
+      type: "pyq",
+      priority: hasUnexposedPyq ? 8 : 0,
+      label: hasUnexposedPyq ? "Add source-grounded PYQ exposure" : "",
     },
     {
       type: "practice",
@@ -64,7 +99,7 @@ export function buildStudyPlan({
     {
       type: "practice",
       priority: 1,
-      label: "Finish with focused MCQ practice",
+      label: dominantErrorType ? `Target ${dominantErrorType} errors with focused MCQs` : "Finish with focused MCQ practice",
     },
   ].filter((item) => item.label);
 
@@ -106,8 +141,13 @@ export function buildStudyPlan({
     priorities: {
       dueRevisions: due.length,
       weakRevisionCards: weakRevisions.length,
+      weakTopics: weakTopics.slice(0, 3),
+      dominantErrorType,
       unfinishedTopics: unfinished.length,
       sourceBackedContent: hasSourceContent,
+      pyqsAvailable: validPyqs.length,
+      pyqAttempts,
+      pyqExposure,
     },
     plan,
   };
