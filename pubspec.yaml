@@ -12,6 +12,7 @@ dependencies:
   file_picker: ^13.1.0
   shared_preferences: ^2.5.5
   syncfusion_flutter_pdf: ^34.2.8
+  http: ^1.5.0
 
 dev_dependencies:
   flutter_test:
