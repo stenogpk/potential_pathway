@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowRight, BookOpen, Brain, CheckCircle2, Clock3, FileText, FlaskConical,
-  Flame, LayoutDashboard, Menu, Play, RotateCcw, Target, Trophy, X, CircleHelp, BarChart3
+  Flame, LayoutDashboard, Menu, Play, RotateCcw, Target, Trophy, X, CircleHelp, BarChart3, MessageCircle
 } from "lucide-react";
 import "./styles.css";
 import { missions, missionProgress } from "./data/missions";
@@ -143,6 +143,7 @@ function App() {
           <button onClick={() => setPanel("research")}><Brain size={16}/> External Verification</button>
           <button onClick={() => setPanel("ai")}><Brain size={16}/> AI Draft Lab</button>
           <button onClick={() => setPanel("mock")}><Trophy size={16}/> Mock Test</button>
+          <button onClick={() => setPanel("chat")}><MessageCircle size={16}/> AI Study Chat</button>
         </div>
       </aside>
 
@@ -173,6 +174,7 @@ function App() {
       {panel === "research" && <ExternalVerificationPanel missionId={active === "dashboard" ? "pcs" : active} requests={state.externalVerificationRequests || []} setState={setState} setSources={setSources} setContentChunks={setContentChunks} onClose={() => setPanel(null)} />}
       {panel === "ai" && <AiDraftPanel missionId={active === "dashboard" ? "pcs" : active} sources={sources} contentChunks={contentChunks} onClose={() => setPanel(null)} />}
       {panel === "mock" && <MockTestPanel missionId={active === "dashboard" ? "pcs" : active} groundedQuestions={groundedQuestions} sources={sources} contentChunks={contentChunks} onClose={() => setPanel(null)} /> }
+      {panel === "chat" && <ChatPanel missionId={active === "dashboard" ? "pcs" : active} contentChunks={contentChunks} setState={setState} onClose={() => setPanel(null)} />}
       {session && (
         <div className="session-overlay">
           <div className="session-card">
@@ -664,6 +666,72 @@ function RevisionPanel({ revisions, courseNodes, setState, onClose }) {
     </> : <div className="empty-state"><CheckCircle2 size={20}/> No revision cards are due right now.</div>}
     <p className="muted">Correct reviews advance the interval through the PP revision schedule; incorrect reviews return to a 1-day interval.</p>
   </div></div>
+}
+
+
+function ChatPanel({ missionId, contentChunks, setState, onClose }) {
+  const [messages, setMessages] = useState([
+    { role: "assistant", text: "मैं indexed source/PDF evidence के आधार पर मदद करूँगा। जहाँ evidence नहीं मिलेगा, मैं external verification request बनाऊँगा—अंदाज़ा नहीं लगाऊँगा।" },
+  ]);
+  const [query, setQuery] = useState("");
+
+  const ask = () => {
+    const clean = query.trim();
+    if (!clean) return;
+    const matches = searchSources(contentChunks, clean, { missionId, limit: 4 });
+    if (matches.length) {
+      const request = createAiDraftRequest({ missionId, topic: clean, chunks: matches });
+      const validation = validateAiDraftEvidence(request, contentChunks);
+      const evidence = matches.slice(0, 3).map((chunk) => {
+        const source = chunk.sourceId || "indexed-source";
+        const label = chunk.evidenceLayer === "official" ? "Official external source" : chunk.evidenceLayer === "trusted-external" ? "Trusted external source" : "Provided PDF / source";
+        const excerpt = String(chunk.text || "").replace(/\\s+/g, " ").slice(0, 420);
+        return `• [${label}] ${source} · ${chunk.locator || chunk.id}: ${excerpt}`;
+      }).join("\\n");
+      const reply = validation.valid
+        ? `Source-grounded evidence मिला।\\n\\n${evidence}\\n\\nऊपर का text indexed evidence है; इसे final exam fact मानने से पहले source locator देखना उचित है।`
+        : validation.reason;
+      setMessages((current) => [...current, { role: "user", text: clean }, { role: "assistant", text: reply }]);
+    } else {
+      const request = {
+        missionId,
+        topic: clean,
+        reason: "No matching indexed user-source evidence was found in the current mission.",
+        claimType: "course-content",
+        requiredLayer: "official",
+        status: "needs-external-verification",
+        createdAt: Date.now(),
+      };
+      setState((current) => ({
+        ...current,
+        externalVerificationRequests: [
+          request,
+          ...(current.externalVerificationRequests || []).filter(
+            (item) => item.missionId !== missionId || item.topic !== clean
+          ),
+        ].slice(0, 100),
+      }));
+      setMessages((current) => [...current, { role: "user", text: clean }, {
+        role: "assistant",
+        text: "इस mission के indexed PDF/source में matching evidence नहीं मिला। मैंने External Verification queue में request डाल दी है। अभी कोई unverified answer नहीं बनाया गया।",
+      }]);
+    }
+    setQuery("");
+  };
+
+  return <div className="tool-overlay"><div className="tool-card readiness-card">
+    <button className="close-session" onClick={onClose}><X /></button>
+    <p className="eyebrow">SOURCE-GROUNDED AI CHAT</p><h2>AI Study Chat</h2>
+    <p className="muted">Mission: {missionId.toUpperCase()} · PDF/source first · external verification when evidence is missing.</p>
+    <div className="source-list" style={{maxHeight: "48vh", overflowY: "auto"}}>
+      {messages.map((message, index) => <div className="source-item" key={index}><MessageCircle size={18}/><div><b>{message.role === "user" ? "You" : "PP AI"}</b><span style={{whiteSpace: "pre-wrap"}}>{message.text}</span></div></div>)}
+    </div>
+    <div className="form-row">
+      <input value={query} onChange={(e)=>setQuery(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter") ask();}} placeholder="Ask about a topic from your uploaded sources…" />
+      <button className="primary" onClick={ask}>Ask</button>
+    </div>
+    <p className="muted">No source match = verification request, not a fabricated answer.</p>
+  </div></div>;
 }
 
 function CoursePanel({ nodes, setNodes, revisions, sources, contentChunks, courseContent, setCourseContent, setState, onClose }) {
