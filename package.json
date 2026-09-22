@@ -33,8 +33,8 @@
     "validate:adaptive-practice": "node scripts/validate-adaptive-practice.mjs",
     "validate:production-batch": "node scripts/validate-production-batch.mjs",
     "validate:chat": "node scripts/validate-chat.mjs",
-    "build:capacitor": "VITE_STANDALONE_BUILD=true vite build && node scripts/prepare-standalone-web.mjs",
-    "build:web-test": "VITE_STANDALONE_BUILD=true vite build && node scripts/prepare-standalone-web.mjs"
+    "build:capacitor": "vite build",
+    "build:web-test": "vite build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
