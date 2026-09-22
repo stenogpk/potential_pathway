@@ -2,8 +2,6 @@ name: Browser Test Build
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
 
 concurrency:
   group: browser-test
