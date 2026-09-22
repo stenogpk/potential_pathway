@@ -28,7 +28,8 @@
     "validate:external-evidence": "node scripts/validate-external-evidence-workflow.mjs",
     "validate:end-to-end": "node scripts/validate-end-to-end.mjs",
     "validate:question-authoring": "node scripts/validate-question-authoring.mjs",
-    "validate:retention-ui": "node scripts/validate-retention-ui-contract.mjs"
+    "validate:retention-ui": "node scripts/validate-retention-ui-contract.mjs",
+    "validate:final-selection": "node scripts/validate-final-selection-workflow.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
