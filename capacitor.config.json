@@ -1,0 +1,9 @@
+{
+  "appId": "com.potentialpathway.app",
+  "appName": "Potential Pathway",
+  "webDir": "dist",
+  "loggingBehavior": "debug",
+  "server": {
+    "androidScheme": "https"
+  }
+}
