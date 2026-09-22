@@ -8,11 +8,12 @@ import 'package:flutter/material.dart';
 
 import 'services/source_service.dart';
 import 'study_store.dart';
+import 'ai_service.dart';
 
 const missions = <Map<String, Object>>[
   {'id':'pcs','title':'PCS / GS','subtitle':'Primary Mission','active':true,'minutes':50},
   {'id':'chemistry','title':'PGT Chemistry','subtitle':'Secondary Mission','active':true,'minutes':30,'examDate':'2026-12-15','questions':120,'duration':120,'marks':400,'written':360,'interview':40,'marking':'+3 / -1'},
-  {'id':'roaro','title':'RO / ARO','subtitle':'Coming Soon','active':false,'minutes':50},
+  {'id':'roaro','title':'RO / ARO','subtitle':'Additional Mission','active':true,'minutes':40},
 ];
 
 Map<String,Object> mission(String id) => missions.firstWhere((m)=>m['id']==id, orElse:()=>missions.first);
@@ -123,7 +124,8 @@ class _HomeShellState extends State<HomeShell> {
                   onTap:m['active']==true?(){Navigator.pop(context);setMission(m['id'].toString());}:null,
                 ),
               const Divider(),
-              ListTile(leading:const Icon(Icons.chat_outlined),title:const Text('AI Study Chat'),onTap:()=>open(Chat(store:widget.store,missionId:currentMission))),
+              ListTile(leading:const Icon(Icons.auto_awesome),title:const Text('AI Study Brain'),onTap:()=>open(Chat(store:widget.store,missionId:currentMission))),
+              ListTile(leading:const Icon(Icons.key_outlined),title:const Text('AI / Gemini Settings'),onTap:()=>open(AiSettings(store:widget.store))),
               ListTile(leading:const Icon(Icons.library_add_outlined),title:const Text('Question Studio'),onTap:()=>open(QuestionStudio(store:widget.store,missionId:currentMission))),
               ListTile(leading:const Icon(Icons.fact_check_outlined),title:const Text('External Verification'),onTap:()=>open(ExternalVerification(store:widget.store,missionId:currentMission))),
               ListTile(leading:const Icon(Icons.timer_outlined),title:const Text('Mock Test'),onTap:()=>open(Mock(store:widget.store,missionId:currentMission))),
@@ -327,14 +329,47 @@ class Readiness extends StatelessWidget{
   @override Widget build(BuildContext context){final a=listRows(store.state,'attempts').where((x)=>x['missionId']==missionId).toList();final r=listRows(store.state,'revisions').where((x)=>x['missionId']==missionId).toList();final n=listRows(store.state,'nodes').where((x)=>x['missionId']==missionId&&x['kind']=='topic').toList();final correct=a.where((x)=>x['isCorrect']==true).length;final acc=a.isEmpty?null:(correct*100/a.length).round();final done=n.where((x)=>x['status']=='completed').length;final cov=n.isEmpty?null:(done*100/n.length).round();final master=r.where((x)=>((x['repetitions'] as num?)?.toInt()??0)>=5).length;final stable=r.where((x)=>((x['repetitions'] as num?)?.toInt()??0)>=3).length;final ret=r.isEmpty?null:(((master+stable*.75)/r.length)*100).round();final due=r.where((x){final d=DateTime.tryParse((x['dueAt']??'').toString());return d!=null&&!d.isAfter(DateTime.now());}).length;final comps=[acc,cov,ret].whereType<int>().toList();final index=comps.isEmpty?null:(comps.reduce((a,b)=>a+b)/comps.length).round();return ListView(padding:const EdgeInsets.all(18),children:[const Text('Readiness',style:TextStyle(fontSize:24,fontWeight:FontWeight.w800)),const SizedBox(height:4),Text('Mission: '+mission(missionId)['title'].toString()),const SizedBox(height:16),Card(child:Padding(padding:const EdgeInsets.all(22),child:Column(crossAxisAlignment:CrossAxisAlignment.start,children:[const Text('READINESS INDEX',style:TextStyle(fontSize:11,fontWeight:FontWeight.w800)),const SizedBox(height:4),Text(index==null?'—':index.toString()+'%',style:const TextStyle(fontSize:46,fontWeight:FontWeight.w900))]))),const SizedBox(height:10),GridView.count(crossAxisCount:2,shrinkWrap:true,physics:const NeverScrollableScrollPhysics(),crossAxisSpacing:8,mainAxisSpacing:8,children:[Metric(label:'Coverage',value:cov==null?'—':cov.toString()+'%',icon:Icons.account_tree),Metric(label:'Accuracy',value:acc==null?'—':acc.toString()+'%',icon:Icons.check_circle),Metric(label:'Retention',value:ret==null?'—':ret.toString()+'%',icon:Icons.memory),Metric(label:'Due revisions',value:due.toString(),icon:Icons.refresh)]),const SizedBox(height:14),Card(child:Padding(padding:const EdgeInsets.all(16),child:Text('PYQ, weakness, attempts and revision history are retained locally and feed later adaptive selections.')))]);}
 }
 
+class AiSettings extends StatefulWidget{final StudyStore store;const AiSettings({super.key,required this.store});@override State<AiSettings> createState()=>_AiSettingsState();}
+class _AiSettingsState extends State<AiSettings>{final keyCtl=TextEditingController();@override void initState(){super.initState();keyCtl.text=(widget.store.state['aiApiKey']??'').toString();}@override void dispose(){keyCtl.dispose();super.dispose();}Future<void>save()async{widget.store.state['aiApiKey']=keyCtl.text.trim();await widget.store.save();if(mounted){ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('AI key saved on this device.')));}}@override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('AI / Gemini Settings')),body:ListView(padding:const EdgeInsets.all(18),children:[const Text('Source-grounded AI',style:TextStyle(fontSize:24,fontWeight:FontWeight.w800)),const SizedBox(height:8),const Text('The app uses Gemini to explain, generate study material and create questions from the selected mission syllabus plus your indexed sources. Your key is stored locally on this device.'),const SizedBox(height:16),TextField(controller:keyCtl,obscureText:true,decoration:const InputDecoration(labelText:'Gemini API key',hintText:'Paste your Google AI Studio key')),const SizedBox(height:12),FilledButton.icon(onPressed:save,icon:const Icon(Icons.save),label:const Text('Save AI key')),const SizedBox(height:16),const Text('Without a key, the app still uses its local syllabus/evidence engine. For the full NotebookLM-style AI layer, configure a Gemini API key.') ]));}
+
 class Chat extends StatefulWidget{
-  final StudyStore store;final String missionId;const Chat({super.key,required this.store,required this.missionId});@override State<Chat> createState()=>_ChatState();
+  final StudyStore store; final String missionId;
+  const Chat({super.key,required this.store,required this.missionId});
+  @override State<Chat> createState()=>_ChatState();
 }
 class _ChatState extends State<Chat>{
-  final input=TextEditingController();final messages=<Map<String,String>>[{'role':'assistant','text':'Ask about a topic. I search indexed evidence first.'}];
+  final input=TextEditingController();
+  final messages=<Map<String,String>>[{'role':'assistant','text':'मैं पहले इसी mission के syllabus और आपके uploaded sources को आधार बनाऊँगा। फिर जरूरत हो तो Gemini से explanation दूँगा।'}];
+  bool busy=false;
   @override void dispose(){input.dispose();super.dispose();}
-  void ask(){final q=input.text.trim();if(q.isEmpty)return;final terms=q.toLowerCase().split(RegExp(r'\s+'));final chunks=listRows(widget.store.state,'chunks').where((x)=>x['missionId']==widget.missionId).toList();final hits=chunks.map((c){final t=c['text'].toString().toLowerCase();return {'c':c,'score':terms.fold<int>(0,(a,w)=>a+(t.contains(w)?1:0))};}).where((x)=>(x['score'] as int)>0).toList()..sort((a,b)=>(b['score'] as int).compareTo(a['score'] as int));messages.add({'role':'user','text':q});if(hits.isEmpty){final vr=listRows(widget.store.state,'verificationRequests');vr.insert(0,{'id':newId('verify'),'missionId':widget.missionId,'topic':q,'reason':'No matching indexed source evidence.','status':'needs-external-verification','createdAt':DateTime.now().toIso8601String()});widget.store.state['verificationRequests']=vr;widget.store.save();widget.store.notifyListeners();messages.add({'role':'assistant','text':'No matching PDF/source evidence found. External Verification request created; no answer was invented.'});}else{messages.add({'role':'assistant','text':hits.take(4).map((x){final c=x['c'] as Map;return '['+c['locator'].toString()+'] '+c['text'].toString();}).join('\n\n')});}input.clear();setState((){});}
-  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('AI Study Chat')),body:Column(children:[Expanded(child:ListView(padding:const EdgeInsets.all(14),children:[for(final m in messages)Align(alignment:m['role']=='user'?Alignment.centerRight:Alignment.centerLeft,child:Container(constraints:const BoxConstraints(maxWidth:780),margin:const EdgeInsets.only(bottom:8),padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:m['role']=='user'?Theme.of(context).colorScheme.primaryContainer:Colors.white10,borderRadius:BorderRadius.circular(14)),child:Text(m['text']??'')))])),SafeArea(top:false,child:Padding(padding:const EdgeInsets.all(10),child:Row(children:[Expanded(child:TextField(controller:input,onSubmitted:(_)=>ask(),decoration:const InputDecoration(hintText:'Ask about indexed sources…'))),const SizedBox(width:8),FilledButton(onPressed:ask,child:const Text('Ask'))])))]));
+  String contextFor(String q){
+    final chunks=listRows(widget.store.state,'chunks').where((x)=>x['missionId']==widget.missionId).toList();
+    final terms=q.toLowerCase().split(RegExp(r'\\s+')).where((x)=>x.length>2).toList();
+    final hits=chunks.map((c){final t=c['text'].toString().toLowerCase();return {'c':c,'score':terms.fold<int>(0,(a,w)=>a+(t.contains(w)?1:0))};}).toList()..sort((a,b)=>(b['score'] as int).compareTo(a['score'] as int));
+    return hits.take(8).map((x){final m=x['c'] as Map;return '[SOURCE: '+m['locator'].toString()+'] '+m['text'].toString();}).join('\\n\\n');
+  }
+  Future<void> ask() async {
+    final q=input.text.trim(); if(q.isEmpty||busy)return;
+    messages.add({'role':'user','text':q}); input.clear(); setState(()=>busy=true);
+    final sourceContext=contextFor(q);
+    final nodes=listRows(widget.store.state,'nodes').where((n)=>n['missionId']==widget.missionId).map((n)=>n['name']).take(80).join(', ');
+    final key=(widget.store.state['aiApiKey']??'').toString();
+    if(key.isEmpty){
+      final local=sourceContext.isEmpty?'No matching indexed source evidence. Open Sources and add the relevant PDF.':'Local evidence\\n'+sourceContext;
+      messages.add({'role':'assistant','text':local});
+    }else{
+      try{
+        final result=await AiService.generate(
+          apiKey:key,
+          system:'You are Potential Pathway, a critical exam-preparation tutor. Mission='+mission(widget.missionId)['title'].toString()+'. Use the mission syllabus and supplied source excerpts as the primary evidence. Never invent source facts. Clearly label [USER SOURCE], [OFFICIAL/EXTERNAL], or [INFERENCE]. If source evidence is insufficient, say so and identify what should be verified. Focus on Prelims readiness: learn, understand, recall, MCQ, PYQ, revise, recover, re-test.',
+          prompt:'Mission syllabus topics: '+nodes+'\\n\\nUser source excerpts:\\n'+(sourceContext.isEmpty?'NONE':sourceContext)+'\\n\\nUser question: '+q+'\\n\\nAnswer in Hindi/Hinglish, structured for exam study. End with 2 active-recall questions.',
+        );
+        messages.add({'role':'assistant','text':result.text});
+      }catch(e){messages.add({'role':'assistant','text':'AI error: '+e.toString()+'\\n\\nLocal source search: '+(sourceContext.isEmpty?'No matching evidence.':sourceContext)});}
+    }
+    setState(()=>busy=false);
+  }
+  @override Widget build(BuildContext context)=>Scaffold(appBar:AppBar(title:const Text('AI Study Brain')),body:Column(children:[Expanded(child:ListView(padding:const EdgeInsets.all(14),children:[for(final m in messages)Align(alignment:m['role']=='user'?Alignment.centerRight:Alignment.centerLeft,child:Container(constraints:const BoxConstraints(maxWidth:780),margin:const EdgeInsets.only(bottom:8),padding:const EdgeInsets.all(12),decoration:BoxDecoration(color:m['role']=='user'?Theme.of(context).colorScheme.primaryContainer:Colors.white10,borderRadius:BorderRadius.circular(14)),child:Text(m['text']??'')))])),SafeArea(top:false,child:Padding(padding:const EdgeInsets.all(10),child:Row(children:[Expanded(child:TextField(controller:input,onSubmitted:(_)=>ask(),decoration:InputDecoration(hintText:busy?'AI is thinking…':'Ask from your syllabus and PDFs…'))),const SizedBox(width:8),FilledButton(onPressed:busy?null:ask,child:const Text('Ask'))])))]));
 }
 
 class QuestionStudio extends StatefulWidget{
