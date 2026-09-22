@@ -1,9 +1,19 @@
 import { filterGroundedQuestions } from "./questionProvenance.js";
+import { admitAuthoredQuestion } from "./questionAuthoring.js";
 
 export function addGroundedQuestion(questions, question, sourceIds, chunkIds) {
-  const valid = filterGroundedQuestions([question], sourceIds, chunkIds);
-  if (!valid.length) return Array.isArray(questions) ? questions : [];
-  return [valid[0], ...(Array.isArray(questions) ? questions : []).filter((item) => item.id !== valid[0].id)];
+  const result = admitAuthoredQuestion(questions, question, {
+    sourceIds,
+    chunkIds,
+  });
+  return result.questions;
+}
+
+export function validateAndAdmitGroundedQuestion(questions, question, sourceIds, chunkIds) {
+  return admitAuthoredQuestion(questions, question, {
+    sourceIds,
+    chunkIds,
+  });
 }
 
 export function groundedQuestionsForMission(questions, missionId, sourceIds, chunkIds) {
