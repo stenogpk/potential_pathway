@@ -29,7 +29,8 @@
     "validate:end-to-end": "node scripts/validate-end-to-end.mjs",
     "validate:question-authoring": "node scripts/validate-question-authoring.mjs",
     "validate:retention-ui": "node scripts/validate-retention-ui-contract.mjs",
-    "validate:final-selection": "node scripts/validate-final-selection-workflow.mjs"
+    "validate:final-selection": "node scripts/validate-final-selection-workflow.mjs",
+    "validate:adaptive-practice": "node scripts/validate-adaptive-practice.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
