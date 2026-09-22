@@ -10,6 +10,7 @@ on:
       - "package.json"
       - "vite.config.js"
       - "scripts/**"
+      - ".github/workflows/browser-test.yml"
 
 concurrency:
   group: browser-test
@@ -40,11 +41,16 @@ jobs:
 
       - name: Publish dist to web-test branch
         run: |
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -rf /tmp/potential-pathway-web-test
+          mkdir -p /tmp/potential-pathway-web-test
+          cp -R dist/. /tmp/potential-pathway-web-test/
           git checkout --orphan web-test
           git rm -rf . >/dev/null 2>&1 || true
-          cp -R dist/. .
+          git clean -xfd
+          cp -R /tmp/potential-pathway-web-test/. .
           touch .nojekyll
           git add -A
           git commit -m "deploy browser test build"
