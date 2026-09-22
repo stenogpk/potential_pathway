@@ -12,7 +12,7 @@ on:
       - "README.md"
 
 concurrency:
-  group: potential-pathway-apk-${{ github.ref }}
+  group: potential-pathway-apk
   cancel-in-progress: true
 
 permissions:
@@ -36,10 +36,7 @@ jobs:
           cache: true
 
       - name: Toolchain
-        run: |
-          flutter --version
-          flutter doctor -v
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+        run: flutter --version
 
       - name: Generate native Android shell
         run: |
@@ -52,7 +49,21 @@ jobs:
           cp -R lib .flutter_build_app/lib
           cp pubspec.yaml .flutter_build_app/pubspec.yaml
           cp analysis_options.yaml .flutter_build_app/analysis_options.yaml
-          python3 - <<'PY'
+          rm -rf .flutter_build_app/test
+          mkdir -p .flutter_build_app/test
+          cat > .flutter_build_app/test/widget_test.dart <<'EOF'
+          import 'package:flutter_test/flutter_test.dart';
+          import 'package:potential_pathway/main.dart';
+          import 'package:potential_pathway/study_store.dart';
+
+          void main() {
+            testWidgets('Potential Pathway starts', (tester) async {
+              await tester.pumpWidget(PotentialPathwayApp(store: StudyStore(), autoInit: false));
+              expect(find.text('Potential Pathway'), findsWidgets);
+            });
+          }
+          EOF
+          python3 - <<'PY
           from pathlib import Path
           p = Path(".flutter_build_app/android/app/build.gradle.kts")
           s = p.read_text()
