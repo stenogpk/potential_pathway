@@ -34,6 +34,7 @@ jobs:
       - run: npm run validate:evidence-pipeline
       - run: npm run validate:trusted-sources
       - run: npm run validate:question-authoring
+      - run: npm run validate:retention-ui
 
   production-build:
     name: Production build
