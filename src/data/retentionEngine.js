@@ -1,11 +1,7 @@
 import { getRevisionState, scheduleRevision } from "./revision.js";
 
 export const RETENTION_ERROR_TYPES = [
-  "knowledge-gap",
-  "concept-confusion",
-  "fact-recall",
-  "application-error",
-  "careless-error",
+  "knowledge-gap","concept-confusion","fact-recall","application-error","careless-error",
 ];
 
 export function classifyAttemptError({ isCorrect, errorType = null } = {}) {
@@ -20,7 +16,7 @@ export function applyAttemptToRevision(card, { isCorrect, errorType = null, now 
     ...next,
     lastErrorType: classifyAttemptError({ isCorrect, errorType }),
     reviewedAt: now,
-    state: getRevisionState({ ...next, dueAt: now + next.intervalDays * 24 * 60 * 60 * 1000 }, now),
+    state: getRevisionState({ ...next, dueAt: now + next.intervalDays * 86400000 }, now),
   };
 }
 
@@ -30,13 +26,6 @@ export function retentionSignal(revisions = [], now = Date.now()) {
   const stable = states.filter((state) => state === "stable").length;
   const weak = states.filter((state) => state === "weak-error").length;
   const due = states.filter((state) => state === "due").length;
-  return {
-    total: revisions.length,
-    mastered,
-    stable,
-    weak,
-    due,
-    retained: mastered + stable,
-    retentionPercent: revisions.length ? Math.round(((mastered + stable * 0.75) / revisions.length) * 100) : null,
-  };
+  return { total: revisions.length, mastered, stable, weak, due, retained: mastered + stable,
+    retentionPercent: revisions.length ? Math.round(((mastered + stable * 0.75) / revisions.length) * 100) : null };
 }
