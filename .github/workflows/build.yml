@@ -24,6 +24,7 @@ jobs:
     name: Build latest APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,31 +46,13 @@ jobs:
 
       - name: Inject Flutter application
         run: |
-          rm -rf .flutter_build_app/lib
+          rm -rf .flutter_build_app/lib .flutter_build_app/test
           cp -R lib .flutter_build_app/lib
           cp pubspec.yaml .flutter_build_app/pubspec.yaml
           cp analysis_options.yaml .flutter_build_app/analysis_options.yaml
-          rm -rf .flutter_build_app/test
           mkdir -p .flutter_build_app/test
-          cat > .flutter_build_app/test/widget_test.dart <<'EOF'
-          import 'package:flutter_test/flutter_test.dart';
-          import 'package:potential_pathway/main.dart';
-          import 'package:potential_pathway/study_store.dart';
-
-          void main() {
-            testWidgets('Potential Pathway starts', (tester) async {
-              await tester.pumpWidget(PotentialPathwayApp(store: StudyStore(), autoInit: false));
-              expect(find.text('Potential Pathway'), findsWidgets);
-            });
-          }
-          EOF
-          python3 - <<'PY
-          from pathlib import Path
-          p = Path(".flutter_build_app/android/app/build.gradle.kts")
-          s = p.read_text()
-          s = s.replace('applicationId = "com.potentialpathway.potential_pathway"', 'applicationId = "com.potentialpathway.app"')
-          p.write_text(s)
-          PY
+          printf '%s\n'             "import 'package:flutter_test/flutter_test.dart';"             "import 'package:potential_pathway/main.dart';"             "import 'package:potential_pathway/study_store.dart';"             ""             "void main() {"             "  testWidgets('Potential Pathway starts', (tester) async {"             "    await tester.pumpWidget(PotentialPathwayApp(store: StudyStore(), autoInit: false));"             "    expect(find.text('Potential Pathway'), findsWidgets);"             "  });"             "}" > .flutter_build_app/test/widget_test.dart
+          sed -i 's/applicationId = "com.potentialpathway.potential_pathway"/applicationId = "com.potentialpathway.app"/' .flutter_build_app/android/app/build.gradle.kts
 
       - name: Verify Flutter project
         working-directory: .flutter_build_app
@@ -82,9 +65,7 @@ jobs:
       - name: Build release APK
         working-directory: .flutter_build_app
         run: |
-          flutter build apk --release \
-            --build-name="1.0.${{ github.run_number }}" \
-            --build-number="${{ github.run_number }}"
+          flutter build apk --release             --build-name="1.0.${{ github.run_number }}"             --build-number="${{ github.run_number }}"
 
       - name: Upload only current APK
         uses: actions/upload-artifact@v4
@@ -100,8 +81,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           current="${{ github.run_id }}"
-          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100" \
-            --jq '.artifacts[] | select(.name=="potential-pathway-latest-apk") | [.id,.workflow_run.id] | @tsv' |
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=100"             --jq '.artifacts[] | select(.name=="potential-pathway-latest-apk") | [.id,.workflow_run.id] | @tsv' |
           while IFS=$'\t' read -r artifact_id workflow_run_id; do
             [ -z "${artifact_id}" ] && continue
             if [ "${workflow_run_id}" != "${current}" ]; then
