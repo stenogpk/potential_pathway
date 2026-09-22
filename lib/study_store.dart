@@ -61,12 +61,13 @@ Map<String, dynamic> initialState() => {
 class StudyStore extends ChangeNotifier {
   static const _key = 'potential-pathway-flutter-state-v1';
 
-  final SharedPreferencesAsync _prefs = SharedPreferencesAsync();
+  late final SharedPreferencesAsync _prefs;
 
   Map<String, dynamic> state = initialState();
   bool ready = false;
 
   Future<void> init() async {
+    _prefs = SharedPreferencesAsync();
     try {
       final raw = await _prefs.getString(_key);
       if (raw != null && raw.isNotEmpty) {
