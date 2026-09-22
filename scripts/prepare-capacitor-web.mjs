@@ -30,20 +30,25 @@ if (!fs.existsSync(bundlePath)) {
 
 const bundle = fs.readFileSync(bundlePath, "utf8");
 
-if (/^\\s*(import|export)\\s/m.test(bundle)) {
+if (/^\s*(import|export)\s/m.test(bundle)) {
   throw new Error("Capacitor entry still contains static import/export syntax.");
 }
 
-// Inline the app entry into index.html. The Android WebView demonstrably executes
-// inline JavaScript (the startup diagnostic itself runs), so this removes the last
-// dependency on external module/classic script loading, MIME detection, or asset URL
-// resolution for the React bootstrap.
+// The Vite HTML places the module entry in <head>. A classic inline script there
+// would execute before <body> exists, so move the compiled application bootstrap
+// to the end of <body>, after #root and after startup diagnostics are registered.
 const safeBundle = bundle.replaceAll("</script", "<\\/script");
-const replacement = `<script>${safeBundle}</script>`;
+const replacement = "";
 html = html.replace(match[0], replacement);
+const injection = `    <script>${safeBundle}</script>\n  </body>`;
+if (!html.includes("</body>")) {
+  throw new Error("Could not find </body> in dist/index.html.");
+}
+html = html.replace("</body>", injection);
 
 fs.writeFileSync(indexPath, html, "utf8");
 
-console.log(`Inlined native WebView entry: ${relativeSrc}`);
+console.log(`Inlined native/browser app entry from: ${relativeSrc}`);
 console.log(`Inline bundle size: ${bundle.length} bytes`);
-console.log("Standalone IIFE/static syntax check: PASS");
+console.log("Static ESM syntax check: PASS");
+console.log("Bootstrap placement check: END OF BODY");
