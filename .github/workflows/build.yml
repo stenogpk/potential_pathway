@@ -33,6 +33,7 @@ jobs:
       - run: npm run validate:end-to-end
       - run: npm run validate:evidence-pipeline
       - run: npm run validate:trusted-sources
+      - run: npm run validate:question-authoring
 
   production-build:
     name: Production build
