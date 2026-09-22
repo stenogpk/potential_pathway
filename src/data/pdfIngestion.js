@@ -1,9 +1,5 @@
 import { createContentChunk } from "./contentModel.js";
 import { splitTextIntoChunks } from "./textExtractor.js";
-import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
-import workerUrl from "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
 
 export const supportedPdfExtensions = [".pdf"];
 
@@ -18,6 +14,14 @@ export async function extractPdfPages(file) {
   if (!file || typeof file.arrayBuffer !== "function") {
     throw new Error("A readable PDF File-like object is required.");
   }
+
+  // Load PDF.js only when a PDF is actually opened. Keeping it out of the initial
+  // bundle avoids Android WebView startup failures on environments missing PDF.js globals.
+  const [{ default: pdfjsLib }, workerModule] = await Promise.all([
+    import("pdfjs-dist/legacy/build/pdf.mjs"),
+    import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url"),
+  ]);
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerModule.default;
 
   const data = new Uint8Array(await file.arrayBuffer());
   const pdf = await pdfjsLib.getDocument({ data }).promise;
