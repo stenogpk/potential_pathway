@@ -22,3 +22,5 @@ Included:
 The PDF dependency is Syncfusion Flutter PDF. The current package documentation supports loading PDF bytes and extracting text with PdfTextExtractor. The package documentation states that a Syncfusion commercial or free Community license is required.
 
 Android updates use the same application id (com.potentialpathway.app) and a monotonically increasing build number from the GitHub run number.
+
+Native Flutter rebuild activated on 2026-09-22.
