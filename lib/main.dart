@@ -36,20 +36,15 @@ class PotentialPathwayApp extends StatelessWidget {
       colorScheme:ColorScheme.fromSeed(seedColor:const Color(0xFF6D5EF7),brightness:Brightness.dark),
       scaffoldBackgroundColor:const Color(0xFF0B1020),
     ),
-    home:autoInit
-      ? FutureBuilder<void>(
-          future:store.init(),
-          builder:(context,snapshot)=>snapshot.connectionState==ConnectionState.done
-            ? HomeShell(store:store)
-            : const StartupPage(),
-        )
-      : HomeShell(store:store),
+    home:HomeShell(store:store),
   );
 }
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(PotentialPathwayApp(store:StudyStore()));
+  final store=StudyStore();
+  await store.init();
+  runApp(PotentialPathwayApp(store:store,autoInit:false));
 }
 
 class StartupPage extends StatelessWidget {
