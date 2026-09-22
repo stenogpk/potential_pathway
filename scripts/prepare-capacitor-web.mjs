@@ -5,35 +5,38 @@ const distDir = path.resolve("dist");
 const indexPath = path.join(distDir, "index.html");
 
 if (!fs.existsSync(indexPath)) {
-  throw new Error("dist/index.html was not produced by Vite.");
+  throw new Error("dist/index.html was not produced by the Capacitor build.");
 }
 
 let html = fs.readFileSync(indexPath, "utf8");
-const moduleScriptPattern = /<script([^>]*?)type=["']module["']([^>]*?)src=["']([^"']+)["']([^>]*)><\/script>/i;
-const match = html.match(moduleScriptPattern);
+const scriptPattern = /<script([^>]*?)type=["']module["']([^>]*?)src=["']([^"']+)["']([^>]*)><\/script>/i;
+const match = html.match(scriptPattern);
 
 if (!match) {
-  throw new Error("Could not find the Vite entry module in dist/index.html.");
+  throw new Error("Could not find the Vite module entry in dist/index.html.");
 }
 
 const src = match[3];
 if (!src.includes("/assets/") || !src.endsWith(".js")) {
-  throw new Error(`Unexpected Vite entry path: ${src}`);
+  throw new Error(`Unexpected Capacitor entry path: ${src}`);
 }
 
-// Android WebView is much more reliable with the already-bundled entry executed
-// as a classic script. Vite has already collapsed the static ESM imports into this
-// single file; the remaining dynamic import() calls are only used for PDF tooling.
-const replacement = `<script defer src="${src}"></script>`;
+const relativeSrc = src.startsWith("./") ? src : "." + (src.startsWith("/") ? src : "/" + src);
+const replacement = `<script defer src="${relativeSrc}"></script>`;
 html = html.replace(match[0], replacement);
 
 fs.writeFileSync(indexPath, html, "utf8");
 
-const bundlePath = path.join(distDir, src.replace(/^\//, ""));
+const bundlePath = path.join(distDir, relativeSrc.replace(/^\.\//, ""));
 const bundle = fs.readFileSync(bundlePath, "utf8");
+
 if (/^\\s*(import|export)\\s/m.test(bundle)) {
-  throw new Error("The Vite entry still contains a static import/export and cannot be executed as a classic script.");
+  throw new Error("Capacitor entry still contains static import/export syntax.");
 }
 
-console.log(`Prepared Capacitor entry: ${src}`);
-console.log("Static ESM import/export check: PASS");
+if (!/\\bfunction\\s+[A-Za-z_$][\\w$]*\\s*\\(/.test(bundle) && !/\\(function\\s*\\(/.test(bundle)) {
+  throw new Error("Capacitor entry does not look like a standalone JavaScript bundle.");
+}
+
+console.log(`Prepared native WebView entry: ${relativeSrc}`);
+console.log("Standalone IIFE/static syntax check: PASS");
