@@ -2,6 +2,14 @@ name: Browser Test Build
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "index.html"
+      - "package.json"
+      - "vite.config.js"
+      - "scripts/**"
 
 concurrency:
   group: browser-test
