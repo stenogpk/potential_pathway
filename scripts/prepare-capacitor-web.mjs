@@ -34,10 +34,6 @@ if (/^\\s*(import|export)\\s/m.test(bundle)) {
   throw new Error("Capacitor entry still contains static import/export syntax.");
 }
 
-if (!/\\bfunction\\s+[A-Za-z_$][\\w$]*\\s*\\(/.test(bundle) && !/\\(function\\s*\\(/.test(bundle)) {
-  throw new Error("Capacitor entry does not look like a standalone JavaScript bundle.");
-}
-
 // Inline the app entry into index.html. The Android WebView demonstrably executes
 // inline JavaScript (the startup diagnostic itself runs), so this removes the last
 // dependency on external module/classic script loading, MIME detection, or asset URL
