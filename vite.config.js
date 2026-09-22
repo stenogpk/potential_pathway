@@ -2,12 +2,13 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 const isCapacitorBuild = process.env.VITE_CAPACITOR_BUILD === "true";
+const base = process.env.VITE_WEB_BUILD === "true" ? "/potential_pathway/" : "./";
 
 export default defineConfig({
   // Keep the web build portable. The Capacitor preparation step rewrites the
   // final HTML to use a relative script URL so it also works from the native
   // WebView asset server.
-  base: "./",
+  base,
   plugins: [react()],
   build: isCapacitorBuild
     ? {
