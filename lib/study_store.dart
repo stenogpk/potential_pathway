@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'syllabus_data.dart';
 
 Map<String, dynamic> initialState() => {
-  'version': 1,
+  'version': 2,
+  'nodes': SyllabusData.initialNodes(),
   'sessions': <Map<String, dynamic>>[],
   'sources': <Map<String, dynamic>>[],
   'chunks': <Map<String, dynamic>>[],
@@ -13,6 +15,8 @@ Map<String, dynamic> initialState() => {
   'attempts': <Map<String, dynamic>>[],
   'revisions': <Map<String, dynamic>>[],
   'verificationRequests': <Map<String, dynamic>>[],
+  'aiApiKey': '',
+  'aiModel': 'gemini-2.5-flash',
   'activeMission': 'pcs',
   'questions': <Map<String, dynamic>>[
     {
@@ -130,7 +134,8 @@ class StudyStore extends ChangeNotifier {
           ? raw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
           : <Map<String, dynamic>>[];
     }
-    merged['version'] = 1;
+    merged['version'] = 2;
+    if ((merged['nodes'] as List).isEmpty) merged['nodes'] = SyllabusData.initialNodes();
     return merged;
   }
 }
