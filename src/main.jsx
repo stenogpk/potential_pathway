@@ -20,6 +20,8 @@ import { groundedQuestionsForMission, addGroundedQuestion } from "./data/mcqBank
 import { validateGroundedQuestion } from "./data/questionProvenance.js";
 import { getEvidenceLabel } from "./data/evidenceModel.js";
 import { buildBackupEnvelope, parseBackupFile, restoreBackupEnvelope } from "./data/backupManager.js";
+import { filterPyqs, buildPyqTrend } from "./data/pyqEngine.js";
+import { RETENTION_ERROR_TYPES } from "./data/retentionEngine.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -35,7 +37,7 @@ function App() {
   const [courseContent, setCourseContent] = useState(state.courseContent || []);
   const [groundedQuestions, setGroundedQuestions] = useState(state.groundedQuestions || []);
   const [courseNodes, setCourseNodes] = useState(state.courseNodes || []);
-  const [questionState, setQuestionState] = useState({ index: 0, selected: null, score: 0, attempts: 0 });
+  const [questionState, setQuestionState] = useState({ index: 0, selected: null, score: 0, attempts: 0, lastAttemptId: null });
 
   useEffect(() => {
     saveState({ ...state, activeMission: active, sources, contentChunks, courseContent, groundedQuestions, courseNodes });
@@ -156,7 +158,7 @@ function App() {
 
       {panel === "sources" && <SourcePanel sources={sources} setSources={setSources} contentChunks={contentChunks} setContentChunks={setContentChunks} onClose={() => setPanel(null)} />}
       {panel === "mcq" && <McqPanel questionState={questionState} setQuestionState={setQuestionState} setState={setState} missionId={active === "dashboard" ? "pcs" : active} groundedQuestions={groundedQuestions} sources={sources} contentChunks={contentChunks} onClose={() => setPanel(null)} />}
-      {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
+      {panel === "readiness" && <ReadinessPanel sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} groundedQuestions={groundedQuestions} activeMission={active === "dashboard" ? "pcs" : active} onClose={() => setPanel(null)} />}
       {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} sources={sources} contentChunks={contentChunks} courseContent={courseContent} setCourseContent={setCourseContent} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "revision" && <RevisionPanel revisions={state.revisions} courseNodes={courseNodes} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "backup" && <BackupPanel state={{ ...state, activeMission: active, sources, contentChunks, courseContent, groundedQuestions, courseNodes }} setState={setState} setSources={setSources} setContentChunks={setContentChunks} setCourseContent={setCourseContent} setGroundedQuestions={setGroundedQuestions} setCourseNodes={setCourseNodes} onClose={() => setPanel(null)} />}
@@ -368,6 +370,8 @@ function SourcePanel({ sources, setSources, contentChunks, setContentChunks, onC
 }
 
 function McqPanel({ questionState, setQuestionState, setState, missionId, groundedQuestions, sources, contentChunks, onClose }) {
+  const [questionType, setQuestionType] = useState("all");
+  const [errorType, setErrorType] = useState("");
   const [difficulty, setDifficulty] = useState("all");
   const [topicId, setTopicId] = useState("all");
   const sourceIds = sources.filter((source) => source.missionId === missionId).map((source) => source.id);
@@ -376,7 +380,7 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
   const baseQuestions = verifiedQuestions;
   const isGroundedMode = verifiedQuestions.length > 0;
   const topicOptions = [...new Set(baseQuestions.map((item) => item.topicId))];
-  const missionQuestions = baseQuestions.filter((item) => (difficulty === "all" || item.difficulty === difficulty) && (topicId === "all" || item.topicId === topicId));
+  const missionQuestions = baseQuestions.filter((item) => (questionType === "all" || item.questionType === questionType) && (difficulty === "all" || item.difficulty === difficulty) && (topicId === "all" || item.topicId === topicId));
   const q = missionQuestions.length ? missionQuestions[questionState.index % missionQuestions.length] : null;
   const answered = questionState.selected !== null;
   const choose = (optionId) => {
@@ -393,11 +397,13 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
       marks: calculateMarks(isCorrect, getMissionMarking(q.missionId)),
       timeSeconds: 0,
       attemptedAt: Date.now(),
+      errorType: null,
     };
     setQuestionState((s) => ({
       ...s,
       selected: optionId,
       attempts: s.attempts + 1,
+      lastAttemptId: attempt.id,
       score: s.score + (isCorrect ? 1 : 0),
     }));
     setState((current) => {
@@ -415,23 +421,30 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
   const next = () => setQuestionState((s) => ({
     ...s,
     index: (s.index + 1) % Math.max(1, missionQuestions.length),
-    selected: null
+    selected: null,
+    lastAttemptId: null
   }));
   return <div className="tool-overlay"><div className="tool-card">
     <button className="close-session" onClick={onClose}><X /></button>
     <p className="eyebrow">PRACTICE ENGINE</p><h2>MCQ quick practice</h2><p className="muted">{isGroundedMode ? "Source-grounded questions are active." : "No verified questions are loaded. Trusted external verification is required before new exam content is admitted."}</p>
-    <div className="form-row mcq-filters"><select value={difficulty} onChange={(e)=>{setDifficulty(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All difficulty</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><select value={topicId} onChange={(e)=>{setTopicId(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All topics</option>{topicOptions.map((id)=><option key={id} value={id}>{id}</option>)}</select></div>
-    <div className="question-meta">Question {questionState.index + 1} / {missionQuestions.length} · Score {questionState.score}/{questionState.attempts} · {getEvidenceLabel(sources.find((source) => source.id === q.sourceRefs?.[0]) || {})}</div>
+    <div className="form-row mcq-filters"><select value={questionType} onChange={(e)=>{setQuestionType(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All types</option><option value="concept">Concept</option><option value="fact">Fact</option><option value="application">Application</option><option value="pyq">PYQ</option></select><select value={difficulty} onChange={(e)=>{setDifficulty(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All difficulty</option><option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option></select><select value={topicId} onChange={(e)=>{setTopicId(e.target.value);setQuestionState((s)=>({...s,index:0,selected:null}));}}><option value="all">All topics</option>{topicOptions.map((id)=><option key={id} value={id}>{id}</option>)}</select></div>
+    <div className="question-meta">Question {questionState.index + 1} / {missionQuestions.length} · Score {questionState.score}/{questionState.attempts} · {q.questionType?.toUpperCase() || "MCQ"} · {getEvidenceLabel(sources.find((source) => source.id === q.sourceRefs?.[0]) || {})}</div>
+    {q.questionType === "pyq" && <div className="source-item"><FileText size={16}/><div><b>PYQ: {q.pyq?.exam || "Exam"} · {q.pyq?.year || "Year"} · {q.pyq?.paper || "Paper"}</b><span>Stored as a source-grounded PYQ record.</span></div></div>}
     <h3>{q.stem}</h3>
     <div className="options">{q.options.map((o)=><button key={o.id} className={answered ? (o.id===q.correctOptionId ? "option correct" : o.id===questionState.selected ? "option wrong" : "option") : "option"} onClick={()=>choose(o.id)}>{o.id.toUpperCase()}. {o.text}</button>)}</div>
     {answered && <div className={questionState.selected===q.correctOptionId ? "answer good" : "answer bad"}>{questionState.selected===q.correctOptionId ? q.explanation : "Not correct — review the explanation/source before moving on."}</div>}
+    {answered && questionState.selected !== q.correctOptionId && <select value={errorType} onChange={(e)=>{setErrorType(e.target.value);setState((current)=>({...current,attempts:(current.attempts||[]).map((a)=>a.id===questionState.lastAttemptId?{...a,errorType:e.target.value}:a)}));}}><option value="">Classify error…</option>{RETENTION_ERROR_TYPES.map((type)=><option key={type} value={type}>{type}</option>)}</select>}
     <button className="primary" onClick={next}>{answered ? "Next question" : "Skip for now"}</button>
   </div></div>;
 }
 
-function ReadinessPanel({ sessions, attempts, revisions, courseNodes, activeMission, onClose }) {
+function ReadinessPanel({ sessions, attempts, revisions, courseNodes, groundedQuestions, activeMission, onClose }) {
   const [missionId, setMissionId] = useState(activeMission);
-  const readiness = calculateReadiness({ sessions, attempts, revisions, courseNodes, missionId });
+  const readiness = calculateReadiness({ sessions, attempts, revisions, courseNodes, questions: groundedQuestions, missionId });
+  const sourceIds = groundedQuestions.filter((q) => q.missionId === missionId).flatMap((q) => q.sourceRefs || []);
+  const chunkIds = groundedQuestions.filter((q) => q.missionId === missionId).flatMap((q) => q.sourceChunkRefs || []);
+  const pyqs = filterPyqs(groundedQuestions, { missionId }, [...new Set(sourceIds)], [...new Set(chunkIds)]);
+  const pyqTrend = buildPyqTrend(pyqs, [...new Set(sourceIds)], [...new Set(chunkIds)]);
   const topicRows = topicAccuracy(attempts, missionId).filter((row) => row.attempts > 0).sort((a, b) => a.accuracy - b.accuracy);
   const weakTopics = weakestTopics(attempts, missionId);
   const revision = revisionLoad(revisions);
@@ -445,6 +458,12 @@ function ReadinessPanel({ sessions, attempts, revisions, courseNodes, activeMiss
       </select>
     </div>
     <div className="readiness-grid">
+      <div><span>Readiness signal</span><b>{readiness.readinessScore === null ? "—" : readiness.readinessScore+"%"}</b></div>
+      <div><span>Coverage</span><b>{readiness.coverage === null ? "—" : readiness.coverage+"%"}</b></div>
+      <div><span>Retention</span><b>{readiness.retention === null ? "—" : readiness.retention+"%"}</b></div>
+      <div><span>PYQ exposure</span><b>{readiness.pyqExposure === null ? "—" : readiness.pyqExposure+"%"}</b></div>
+      <div><span>PYQs available</span><b>{pyqTrend.total}</b></div>
+      <div><span>PYQ years</span><b>{pyqTrend.byYear.length}</b></div>
       <div><span>Study logged</span><b>{readiness.studyMinutes} min</b></div>
       <div><span>MCQ attempts</span><b>{readiness.attempts}</b></div>
       <div><span>Accuracy</span><b>{readiness.accuracy === null ? "—" : readiness.accuracy+"%"}</b></div>
