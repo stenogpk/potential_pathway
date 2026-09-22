@@ -13,7 +13,33 @@
     <title>PP — Potential Pathway</title>
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <div id="root">
+      <div id="startup-status" style="font-family:system-ui,sans-serif;padding:24px;color:#111827">
+        <strong>Potential Pathway</strong>
+        <div style="margin-top:8px">App loading…</div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        function showError(message) {
+          var el = document.getElementById("startup-status");
+          if (!el) return;
+          el.innerHTML =
+            "<strong>Potential Pathway</strong>" +
+            "<div style='margin-top:12px;color:#b91c1c'>App startup error</div>" +
+            "<pre style='white-space:pre-wrap;margin-top:8px;font-size:12px'>" +
+            String(message || "Unknown error") +
+            "</pre>";
+        }
+        window.addEventListener("error", function (event) {
+          showError(event.error && event.error.stack ? event.error.stack : event.message);
+        });
+        window.addEventListener("unhandledrejection", function (event) {
+          var reason = event.reason;
+          showError(reason && reason.stack ? reason.stack : reason);
+        });
+      })();
+    </script>
+    <script type="module" src="./src/main.jsx"></script>
   </body>
 </html>
