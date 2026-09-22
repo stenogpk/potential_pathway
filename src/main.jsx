@@ -831,3 +831,10 @@ function CoursePanel({ nodes, setNodes, revisions, sources, contentChunks, cours
     <div className="source-list">{grouped.map(({mission,rows})=><div className="source-item" key={mission.id}><BookOpen size={18}/><div><b>{mission.title}</b><span>{rows.length ? rows.map((n)=>`${n.kind}: ${n.name} · ${n.status}`).join(" · ") : "No nodes configured yet"}</span></div></div>)}</div>
   </div></div>;
 }
+
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Potential Pathway root element was not found.");
+}
+
+createRoot(rootElement).render(<App />);
