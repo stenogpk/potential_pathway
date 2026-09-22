@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 class SyllabusData {
   static List<Map<String,dynamic>> initialNodes() {
     final out=<Map<String,dynamic>>[];
