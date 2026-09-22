@@ -2,58 +2,71 @@
 
 **AI-Powered Exam Preparation System**
 
-Potential Pathway is a source-grounded, adaptive exam-preparation system designed around practical exam readiness rather than passive content consumption.
+PP is a source-grounded, adaptive exam-preparation application built around one objective: turning study activity into measurable exam readiness.
 
-## Product direction
+## Candidate workflow
 
-**Learn → Practice → Revise → Analyse → Retain**
+**Source → Learn → Recall → Practice → PYQ → Analyse → Revise → Re-test → Retain → Readiness**
 
-The system is being designed around:
-- Prelims-focused readiness
-- Mission-based preparation pathways
-- Adaptive study sessions
-- MCQ + PYQ practice
-- Revision and retention cycles
-- Weak-area detection
-- Source/PDF-grounded course content
-- AI guidance that stays grounded in the configured sources
+The app now includes the working selection loop rather than demo-only placeholders.
 
-## Initial missions
+## Missions
 
 - 🎯 **PCS / GS** — Primary Mission
 - 🧪 **PGT Chemistry** — Secondary Mission
-- 📚 **RO / ARO** — separate pathway planned
+- 📚 **RO / ARO** — separate pathway / coming soon
+- ✍️ Mains workflow can be added as a separate mission without mixing question banks.
 
-## Current implementation
+## Implemented
 
-The repository currently contains the Phase 1 front-end foundation:
-- Responsive dashboard
-- Mission navigation
-- PCS / Chemistry / RO-ARO pathway cards
-- Study-session interaction
-- Initial readiness/stat placeholders
-- PP visual identity
-- Vite + React build setup
-- GitHub Actions build validation
+- Responsive candidate dashboard and mission navigation
+- Local persistent study state
+- PDF/TXT/Markdown source ingestion and searchable evidence chunks
+- Source lifecycle and backup/restore
+- Source-grounded course generation with evidence provenance
+- Evidence hierarchy: user source, official, trusted external, secondary, model-only
+- External evidence verification workflow
+- Grounded MCQ authoring and duplicate/evidence admission gates
+- Concept, fact, application and PYQ question types
+- PYQ metadata, filtering and exposure tracking
+- Adaptive question selection
+- Real MCQ timing
+- Attempt scoring and error classification
+- Revision state machine and retention scheduling
+- Adaptive study planner
+- Readiness metrics and weak-topic signals
+- Candidate-facing Question Studio
+- Source-grounded Mock Test mode
+- Source-grounded AI Draft Lab contract
+- End-to-end selection-loop validation
+- GitHub Actions validation gates
 
-The timer and progress values in this prototype are intentionally UI/demo state. They are **not yet the real adaptive study engine**.
+## AI safety / source integrity
 
-## Next engineering layers
+PP does not silently convert model knowledge into verified exam evidence.
 
-1. Data model and local persistence
-2. Source/PDF ingestion model
-3. Course/topic structure
-4. MCQ/PYQ/question-bank model
-5. Revision scheduler
-6. Readiness calculations
-7. AI/source-grounded layer
-8. Authentication/cloud persistence
-9. Production deployment
+When indexed source evidence is available, AI draft requests are constrained to that evidence and retain source/chunk references. When evidence is missing, the workflow blocks rather than inventing facts and can route the topic to external verification.
 
-## Source integrity rule
+The current AI Draft Lab prepares and validates a grounded AI request. A server-side LLM provider is intentionally not hard-coded into the static PWA.
 
-Official notifications and user-provided source PDFs are treated as primary sources when they are the basis for course configuration. Unsupported syllabus details should not be invented.
+## Important content rule
+
+Official notifications and user-provided source documents are authoritative for configured exam facts. Detailed syllabus content must be supplied from an authoritative source before it is loaded into the course. Unsupported syllabus details are not invented.
+
+## Validation
+
+The repository has focused validation for source ingestion, evidence, course, MCQ, PYQ, retention, adaptive practice, external verification and the complete selection workflow.
+
+Before a release, run:
+
+`npm install`
+`npm run build`
+`npm run validate`
+
+GitHub Actions runs the full configured validation gates on the main branch.
 
 ## Development principle
 
-Build one layer at a time, validate it, then move forward. The goal is a maintainable exam-preparation system—not a collection of disconnected screens.
+PP is not a generic productivity app. Features are kept only when they support selection readiness: coverage, practice, error recovery, retention, PYQ exposure and measurable readiness.
+
+**Developed by Shartendu**
