@@ -22,6 +22,7 @@ import { getEvidenceLabel } from "./data/evidenceModel.js";
 import { buildBackupEnvelope, parseBackupFile, restoreBackupEnvelope } from "./data/backupManager.js";
 import { filterPyqs, buildPyqTrend } from "./data/pyqEngine.js";
 import { RETENTION_ERROR_TYPES } from "./data/retentionEngine.js";
+import { createExternalSourceRecord, markExternalVerification, ingestExternalEvidence } from "./data/externalResearch.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -136,6 +137,7 @@ function App() {
           <button onClick={() => setPanel("course")}><BookOpen size={16}/> Course & Revision</button>
           <button onClick={() => setPanel("revision")}><RotateCcw size={16}/> Review Queue</button>
           <button onClick={() => setPanel("backup")}><FileText size={16}/> Backup & Restore</button>
+          <button onClick={() => setPanel("research")}><Brain size={16}/> External Verification</button>
         </div>
       </aside>
 
@@ -162,6 +164,7 @@ function App() {
       {panel === "course" && <CoursePanel nodes={courseNodes} setNodes={setCourseNodes} revisions={state.revisions} sources={sources} contentChunks={contentChunks} courseContent={courseContent} setCourseContent={setCourseContent} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "revision" && <RevisionPanel revisions={state.revisions} courseNodes={courseNodes} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "backup" && <BackupPanel state={{ ...state, activeMission: active, sources, contentChunks, courseContent, groundedQuestions, courseNodes }} setState={setState} setSources={setSources} setContentChunks={setContentChunks} setCourseContent={setCourseContent} setGroundedQuestions={setGroundedQuestions} setCourseNodes={setCourseNodes} onClose={() => setPanel(null)} />}
+      {panel === "research" && <ExternalVerificationPanel missionId={active === "dashboard" ? "pcs" : active} requests={state.externalVerificationRequests || []} setState={setState} setSources={setSources} setContentChunks={setContentChunks} onClose={() => setPanel(null)} />}
       {session && (
         <div className="session-overlay">
           <div className="session-card">
@@ -291,6 +294,78 @@ function Mission({ mission, onStart, sessions, attempts, revisions, courseNodes 
 }
 
 const demoQuestions = questionBank;
+
+function ExternalVerificationPanel({ missionId, requests, setState, setSources, setContentChunks, onClose }) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [publisher, setPublisher] = useState("");
+  const [evidence, setEvidence] = useState("");
+  const [message, setMessage] = useState("");
+  const pending = requests.filter((item) => item.missionId === missionId && item.status === "needs-external-verification");
+  const request = pending[selectedIndex] || pending[0] || null;
+
+  useEffect(() => {
+    if (request) {
+      setTitle(request.topic || "");
+      setEvidence("");
+      setUrl("");
+      setPublisher("");
+    }
+  }, [request?.topic, request?.createdAt]);
+
+  const verify = () => {
+    if (!request || !url.trim() || !evidence.trim()) {
+      setMessage("Topic, trusted URL and copied evidence are required.");
+      return;
+    }
+    const source = createExternalSourceRecord({
+      missionId,
+      title: title || request.topic,
+      url,
+      publisher,
+      authority: request.requiredLayer === "official" ? "official" : "trusted-external",
+    });
+    if (!source) {
+      setMessage("URL is not accepted by the trusted-source policy.");
+      return;
+    }
+    try {
+      const verified = markExternalVerification(source, {
+        verifiedBy: "user-verified-external-evidence",
+        note: `Verified for ${request.topic} (${request.claimType}).`,
+      });
+      const ingested = ingestExternalEvidence({ source: verified, text: evidence });
+      setSources((current) => [verified, ...current]);
+      setContentChunks((current) => [...current, ...ingested.chunks]);
+      setState((current) => ({
+        ...current,
+        externalVerificationRequests: (current.externalVerificationRequests || []).map((item) =>
+          item === request ? { ...item, status: "verified", verifiedSourceId: verified.id, verifiedAt: Date.now() } : item
+        ),
+      }));
+      setMessage(`Verified external evidence added: ${ingested.chunkCount} chunk(s). It is labeled as external evidence.`);
+    } catch (error) {
+      setMessage(error.message || "External evidence could not be ingested.");
+    }
+  };
+
+  return <div className="tool-overlay"><div className="tool-card readiness-card">
+    <button className="close-session" onClick={onClose}><X /></button>
+    <p className="eyebrow">EVIDENCE GATE</p><h2>External Verification</h2>
+    <p className="muted">When the PDF/source is insufficient, PP pauses generation. Add evidence copied from an allowed official/trusted source; PP will label and index it rather than treating model knowledge as verified.</p>
+    {pending.length ? <div className="form-row">
+      <select value={selectedIndex} onChange={(e)=>setSelectedIndex(Number(e.target.value))}>{pending.map((item,index)=><option key={`${item.topic}-${index}`} value={index}>{item.topic} · {item.claimType}</option>)}</select>
+      <input value={title} onChange={(e)=>setTitle(e.target.value)} placeholder="Source title" />
+      <input value={publisher} onChange={(e)=>setPublisher(e.target.value)} placeholder="Publisher / authority" />
+      <input value={url} onChange={(e)=>setUrl(e.target.value)} placeholder="Official/trusted source URL" />
+      <textarea value={evidence} onChange={(e)=>setEvidence(e.target.value)} placeholder="Paste the verified evidence text here…" rows="7" />
+      <button className="primary" onClick={verify}>Verify & index evidence</button>
+    </div> : <div className="empty-state">No pending external verification requests for this mission.</div>}
+    {message && <div className="success-banner"><CheckCircle2 /> {message}</div>}
+    <p className="muted">Important: this static PWA does not pretend to browse arbitrary websites. Verification requires actual source evidence to be supplied, then PP preserves its URL, publisher and evidence layer.</p>
+  </div></div>;
+}
 
 function SourcePanel({ sources, setSources, contentChunks, setContentChunks, onClose }) {
   const [title, setTitle] = useState("");

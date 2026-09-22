@@ -13,7 +13,7 @@ export function createExternalSourceRecord({
   const cleanTitle = String(title || "").trim();
   const cleanUrl = String(url || "").trim();
   if (!missionId || !cleanTitle || !cleanUrl) return null;
-  if (authority === "trusted-external" && !isTrustedExternalUrl(cleanUrl)) return null;
+  if ((authority === "trusted-external" || authority === "official") && !isTrustedExternalUrl(cleanUrl)) return null;
 
   return {
     id: crypto.randomUUID(),
@@ -46,7 +46,7 @@ export function buildResearchFallback({ missionId, topic, localContext = [] }) {
 }
 
 export function canUseExternalEvidence(source) {
-  return getEvidenceLayer(source) === "trusted-external" &&
+  return ["official", "trusted-external"].includes(getEvidenceLayer(source)) &&
     isVerifiedEvidence(source) &&
     isTrustedExternalUrl(source.url);
 }
@@ -78,7 +78,7 @@ export function ingestExternalEvidence({ source, text, maxLength = 1400 }) {
     locator: source.url + "#evidence-" + (index + 1),
     text: part,
     order: index,
-    evidenceLayer: "trusted-external",
+    evidenceLayer: getEvidenceLayer(source),
     sourceUrl: source.url,
     publisher: source.publisher || null,
   })).filter(Boolean);
