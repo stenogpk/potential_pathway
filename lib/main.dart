@@ -310,7 +310,36 @@ class Course extends StatefulWidget{final StudyStore store;final String missionI
 class _CourseState extends State<Course>{
   String kind='subject';String? parent;String name='';String topic='';
   void addNode(){if(name.trim().isEmpty||(kind!='subject'&&parent==null))return;final n=listRows(widget.store.state,'nodes');n.add({'id':newId('node'),'missionId':widget.missionId,'kind':kind,'name':name.trim(),'parentId':kind=='subject'?null:parent,'status':'not-started'});widget.store.state['nodes']=n;widget.store.save();widget.store.notifyListeners();setState(() { name=''; parent=null; });}
-  void buildLesson(){final t=topic.trim();if(t.isEmpty)return;final chunks=listRows(widget.store.state,'chunks').where((c)=>c['missionId']==widget.missionId).toList();final terms=t.toLowerCase().split(RegExp(r'\s+')).where((x)=>x.isNotEmpty).toList();final scored=chunks.map((c){final s=(c['text'] as String).toLowerCase();return {'c':c,'score':terms.fold<int>(0,(a,w)=>a+(s.contains(w)?1:0))};}).where((x)=>(x['score'] as int)>0).toList()..sort((a,b)=>(b['score'] as int).compareTo(a['score'] as int));if(scored.isEmpty){final q=listRows(widget.store.state,'verificationRequests');q.insert(0,{'id':newId('verify'),'missionId':widget.missionId,'topic':t,'reason':'No matching evidence in indexed source.','status':'needs-external-verification','createdAt':DateTime.now().toIso8601String()});widget.store.state['verificationRequests']=q;widget.store.save();widget.store.notifyListeners();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('No source evidence. Verification request created.')));return;}final chosen=scored.take(6).map((x)=>Map<String,dynamic>.from(x['c'] as Map)).toList();final c=listRows(widget.store.state,'courses');c.insert(0,{'id':newId('lesson'),'missionId':widget.missionId,'title':t,'status':'draft','sourceRefs':chosen.map((x)=>x['sourceId']).toSet().toList(),'sourceChunkRefs':chosen.map((x)=>x['id']).toList(),'evidenceLayer':'user-source','body':chosen.map((x)=>'['+x['locator'].toString()+'] '+x['text'].toString()).join('\n\n'),'createdAt':DateTime.now().toIso8601String()});widget.store.state['courses']=c;widget.store.save();widget.store.notifyListeners();ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Source-backed lesson added.')));}
+  Future<void> buildLesson() async {
+    final t=topic.trim(); if(t.isEmpty)return;
+    final chunks=listRows(widget.store.state,'chunks').where((c)=>c['missionId']==widget.missionId).toList();
+    final terms=t.toLowerCase().split(RegExp(r'\\s+')).where((x)=>x.length>2).toList();
+    final scored=chunks.map((c){final s=(c['text'] as String).toLowerCase();return {'c':c,'score':terms.fold<int>(0,(a,w)=>a+(s.contains(w)?1:0))};}).where((x)=>(x['score'] as int)>0).toList()..sort((a,b)=>(b['score'] as int).compareTo(a['score'] as int));
+    if(scored.isEmpty){
+      final q=listRows(widget.store.state,'verificationRequests');q.insert(0,{'id':newId('verify'),'missionId':widget.missionId,'topic':t,'reason':'No matching evidence in indexed source.','status':'needs-external-verification','createdAt':DateTime.now().toIso8601String()});
+      widget.store.state['verificationRequests']=q;await widget.store.save();widget.store.notifyListeners();
+      if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('No source evidence. Verification request created.')));
+      return;
+    }
+    final chosen=scored.take(8).map((x)=>Map<String,dynamic>.from(x['c'] as Map)).toList();
+    var body=chosen.map((x)=>'[SOURCE: '+x['locator'].toString()+']\\n'+x['text'].toString()).join('\\n\\n');
+    final key=(widget.store.state['aiApiKey']??'').toString();
+    if(key.isNotEmpty){
+      try{
+        final ai=await AiService.generate(
+          apiKey:key,
+          system:'You are the course engine inside Potential Pathway. Build exam-ready study material only from the supplied source excerpts and mission syllabus. Do not invent missing facts. Preserve source provenance. Output: Core idea, Why it matters, Detailed explanation, High-yield crux, Facts to remember, 5 active-recall prompts, 5 MCQ targets, Common traps, Revision checklist. Label any inference.',
+          prompt:'Mission: '+mission(widget.missionId)['title'].toString()+'\\nTopic: '+t+'\\n\\nMission syllabus context:\\n'+listRows(widget.store.state,'nodes').where((n)=>n['missionId']==widget.missionId).map((n)=>n['name']).take(100).join(', ')+'\\n\\nSOURCE EXCERPTS:\\n'+body,
+        );
+        body=ai.text;
+      }catch(e){body='AI generation failed, so the lesson below is source evidence only.\\n\\n'+body;}
+    }
+    final c=listRows(widget.store.state,'courses');
+    c.insert(0,{'id':newId('lesson'),'missionId':widget.missionId,'title':t,'status':'ready','sourceRefs':chosen.map((x)=>x['sourceId']).toSet().toList(),'sourceChunkRefs':chosen.map((x)=>x['id']).toList(),'evidenceLayer':key.isEmpty?'user-source':'user-source+AI','body':body,'createdAt':DateTime.now().toIso8601String()});
+    widget.store.state['courses']=c;await widget.store.save();widget.store.notifyListeners();
+    if(mounted)ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Study material generated and saved.')));
+  }
+
   @override Widget build(BuildContext context){final n=listRows(widget.store.state,'nodes').where((x)=>x['missionId']==widget.missionId).toList();final subjects=n.where((x)=>x['kind']=='subject').toList();final topics=n.where((x)=>x['kind']=='topic').toList();final courses=listRows(widget.store.state,'courses').where((x)=>x['missionId']==widget.missionId).toList();return ListView(padding:const EdgeInsets.all(18),children:[
     const Text('Course + Revision',style:TextStyle(fontSize:24,fontWeight:FontWeight.w800)),const SizedBox(height:4),const Text('Subject → Topic → Subtopic with source-grounded lessons.'),const SizedBox(height:14),
     Card(child:Padding(padding:const EdgeInsets.all(16),child:Column(children:[
