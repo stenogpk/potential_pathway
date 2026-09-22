@@ -1,0 +1,41 @@
+name: Browser Test Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  publish-browser-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build web test bundle
+        run: npm run build:web-test
+
+      - name: Publish dist to web-test branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan web-test
+          git rm -rf . >/dev/null 2>&1 || true
+          cp -R dist/. .
+          touch .nojekyll
+          git add -A
+          git commit -m "deploy browser test build"
+          git push --force origin web-test
