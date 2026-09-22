@@ -24,6 +24,7 @@ import { filterPyqs, buildPyqTrend } from "./data/pyqEngine.js";
 import { RETENTION_ERROR_TYPES, applyAttemptToRevision } from "./data/retentionEngine.js";
 import { selectNextQuestion } from "./data/adaptiveQuestionSelector.js";
 import { createExternalSourceRecord, markExternalVerification, ingestExternalEvidence } from "./data/externalResearch.js";
+import { createAiDraftRequest, validateAiDraftEvidence } from "./data/aiGateway.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
 
@@ -140,6 +141,8 @@ function App() {
           <button onClick={() => setPanel("revision")}><RotateCcw size={16}/> Review Queue</button>
           <button onClick={() => setPanel("backup")}><FileText size={16}/> Backup & Restore</button>
           <button onClick={() => setPanel("research")}><Brain size={16}/> External Verification</button>
+          <button onClick={() => setPanel("ai")}><Brain size={16}/> AI Draft Lab</button>
+          <button onClick={() => setPanel("mock")}><Trophy size={16}/> Mock Test</button>
         </div>
       </aside>
 
@@ -168,6 +171,8 @@ function App() {
       {panel === "revision" && <RevisionPanel revisions={state.revisions} courseNodes={courseNodes} setState={setState} onClose={() => setPanel(null)} />}
       {panel === "backup" && <BackupPanel state={{ ...state, activeMission: active, sources, contentChunks, courseContent, groundedQuestions, courseNodes }} setState={setState} setSources={setSources} setContentChunks={setContentChunks} setCourseContent={setCourseContent} setGroundedQuestions={setGroundedQuestions} setCourseNodes={setCourseNodes} onClose={() => setPanel(null)} />}
       {panel === "research" && <ExternalVerificationPanel missionId={active === "dashboard" ? "pcs" : active} requests={state.externalVerificationRequests || []} setState={setState} setSources={setSources} setContentChunks={setContentChunks} onClose={() => setPanel(null)} />}
+      {panel === "ai" && <AiDraftPanel missionId={active === "dashboard" ? "pcs" : active} sources={sources} contentChunks={contentChunks} onClose={() => setPanel(null)} />}
+      {panel === "mock" && <MockTestPanel missionId={active === "dashboard" ? "pcs" : active} groundedQuestions={groundedQuestions} sources={sources} contentChunks={contentChunks} onClose={() => setPanel(null)} /> }
       {session && (
         <div className="session-overlay">
           <div className="session-card">
@@ -522,6 +527,29 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
   </div></div>;
 }
 
+
+function AiDraftPanel({ missionId, sources, contentChunks, onClose }) {
+  const [topic, setTopic] = useState("");
+  const [message, setMessage] = useState("");
+  const chunks = contentChunks.filter((c)=>c.missionId===missionId);
+  const generate = () => {
+    const request = createAiDraftRequest({ missionId, topic: topic.trim(), chunks });
+    const check = validateAiDraftEvidence(request, chunks);
+    setMessage(check.valid ? "Grounded AI draft request is ready. Connect a server-side AI provider to execute generation; PP will only admit outputs carrying these source references." : check.reason);
+  };
+  return <div className="tool-overlay"><div className="tool-card readiness-card"><button className="close-session" onClick={onClose}><X /></button><p className="eyebrow">AI DRAFT LAB</p><h2>Source-grounded AI</h2><p className="muted">PP prepares the exact evidence context first. It never treats unverified model output as exam evidence.</p><input value={topic} onChange={(e)=>setTopic(e.target.value)} placeholder="Topic to generate" /><div className="readiness-grid"><div><span>Indexed chunks</span><b>{chunks.length}</b></div><div><span>Sources</span><b>{sources.filter(s=>s.missionId===missionId).length}</b></div></div><button className="primary" onClick={generate}>Prepare grounded AI draft</button>{message&&<div className="success-banner">{message}</div>}</div></div>;
+}
+
+function MockTestPanel({ missionId, groundedQuestions, sources, contentChunks, onClose }) {
+  const sourceIds=sources.filter(s=>s.missionId===missionId).map(s=>s.id), chunkIds=contentChunks.filter(c=>c.missionId===missionId).map(c=>c.id);
+  const questions=groundedQuestionsForMission(groundedQuestions,missionId,sourceIds,chunkIds);
+  const [index,setIndex]=useState(0),[score,setScore]=useState(0),[selected,setSelected]=useState(null);
+  const q=questions[index];
+  const choose=(id)=>{if(selected)return;setSelected(id);if(id===q.correctOptionId)setScore(s=>s+1);};
+  if(!q)return <div className="tool-overlay"><div className="tool-card"><button className="close-session" onClick={onClose}><X /></button><h2>No verified questions available</h2><p className="muted">Add source-grounded questions in Question Studio before starting a mock.</p></div></div>;
+  const done=selected!==null&&index===Math.min(questions.length-1,9);
+  return <div className="tool-overlay"><div className="tool-card"><button className="close-session" onClick={onClose}><X /></button><p className="eyebrow">MOCK TEST</p><h2>Source-grounded test</h2><div className="question-meta">Q {index+1} · Score {score}/{index+(selected?1:0)}</div><h3>{q.stem}</h3><div className="options">{q.options.map(o=><button key={o.id} className={selected?(o.id===q.correctOptionId?"option correct":o.id===selected?"option wrong":"option"):"option"} onClick={()=>choose(o.id)}>{o.id.toUpperCase()}. {o.text}</button>)}</div>{selected&&<div className="answer">{q.explanation}</div>} {selected&&<button className="primary" onClick={()=>{if(done){setSelected(null);setIndex(0);setScore(0);}else{setSelected(null);setIndex(i=>Math.min(i+1,questions.length-1));}}}>{done?"Restart mock":"Next"}</button>}</div></div>;
+}
 
 function QuestionStudio({ missionId, groundedQuestions, setGroundedQuestions, sources, contentChunks, onClose }) {
   const [topicId, setTopicId] = useState("");
