@@ -30,6 +30,7 @@ jobs:
       - run: npm run validate:pyq-retention
       - run: npm run validate:selection-loop-v2
       - run: npm run validate:external-evidence
+      - run: npm run validate:end-to-end
       - run: npm run validate:evidence-pipeline
       - run: npm run validate:trusted-sources
 
