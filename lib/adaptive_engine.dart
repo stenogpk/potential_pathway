@@ -18,7 +18,7 @@ class AdaptiveEngine {
     final todayMinutes=sessions.where((s){final d=DateTime.tryParse((s['startedAt']??'').toString());return d!=null&&d.year==now.year&&d.month==now.month&&d.day==now.day;}).fold<int>(0,(a,s)=>a+(((s['seconds'] as num?)?.round()??0)/60).ceil());
     final pastMinutes=sessions.fold<int>(0,(a,s)=>a+(((s['seconds'] as num?)?.round()??0)/60).ceil());
     final carry=remaining==0||days==0?0:((remaining*10).ceil()-pastMinutes).clamp(0,120);
-    final baseRequired=remaining==0?0:(days>0?((remaining*10/days).ceil():10);
+    final baseRequired=remaining==0?0:(days>0?(remaining*10/days).ceil():10);
     final required=baseRequired<5?5:baseRequired+(carry>0?(carry/(days<1?1:days)).ceil():0);
     final due=(state['revisions'] as List? ?? const []).whereType<Map>().where((r){if(r['missionId']!=missionId)return false;final d=DateTime.tryParse((r['dueAt']??'').toString());return d!=null&&!d.isAfter(now);}).length;
     final accuracy=attempts.isEmpty?null:attempts.where((a)=>a['isCorrect']==true).length/attempts.length;
