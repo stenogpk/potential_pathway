@@ -22,7 +22,8 @@
     "validate:trusted-sources": "node scripts/validate-trusted-sources.mjs",
     "validate:backup-manager": "node scripts/validate-backup-manager.mjs",
     "validate:course-engine-v2": "node scripts/validate-course-engine-v2.mjs",
-    "validate:selection-engine": "node scripts/validate-selection-engine.mjs"
+    "validate:selection-engine": "node scripts/validate-selection-engine.mjs",
+    "validate:pyq-retention": "node scripts/validate-pyq-retention.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
