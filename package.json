@@ -34,7 +34,8 @@
     "validate:production-batch": "node scripts/validate-production-batch.mjs",
     "validate:chat": "node scripts/validate-chat.mjs",
     "build:capacitor": "VITE_CAPACITOR_BUILD=true vite build && node scripts/prepare-capacitor-web.mjs",
-    "build:web": "VITE_WEB_BUILD=true vite build"
+    "build:web": "VITE_WEB_BUILD=true vite build",
+    "build:web-test": "vite build"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",
