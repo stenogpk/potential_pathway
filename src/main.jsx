@@ -22,6 +22,7 @@ import { getEvidenceLabel } from "./data/evidenceModel.js";
 import { buildBackupEnvelope, parseBackupFile, restoreBackupEnvelope } from "./data/backupManager.js";
 import { filterPyqs, buildPyqTrend } from "./data/pyqEngine.js";
 import { RETENTION_ERROR_TYPES, applyAttemptToRevision } from "./data/retentionEngine.js";
+import { selectNextQuestion } from "./data/adaptiveQuestionSelector.js";
 import { createExternalSourceRecord, markExternalVerification, ingestExternalEvidence } from "./data/externalResearch.js";
 
 const missionIcons = { Target, FlaskConical, BookOpen };
@@ -229,6 +230,7 @@ function formatTime(seconds) {
 
 function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttempts, todayCorrect, sessions, attempts, revisions, courseNodes, contentChunks, groundedQuestions, sources }) {
   const [availableMinutes, setAvailableMinutes] = useState(50);
+  const [customMinutes, setCustomMinutes] = useState("");
   const planner = buildStudyPlan({ missionId: "pcs", availableMinutes, sessions, attempts, revisions, courseNodes, contentChunks, groundedQuestions, sourceIds: sources.filter((s) => s.missionId === "pcs").map((s) => s.id), chunkIds: contentChunks.filter((c) => c.missionId === "pcs").map((c) => c.id) });
   return <div className="content">
     <section className="hero-card">
@@ -243,7 +245,7 @@ function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttemp
 
     {completed && <div className="success-banner"><CheckCircle2 /> Session recorded. Your study time is saved on this device.</div>}
 
-    <section className="planner-card"><div><p className="eyebrow">NEXT BEST STUDY BLOCK</p><h3>{availableMinutes}-minute adaptive plan</h3><p className="muted">Choose the time you actually have today. The order adapts to due revision, repeated weak topics and unfinished course nodes.</p><div className="session-buttons">{[10,20,30,50,60].map((m) => <button key={m} className="secondary" onClick={() => setAvailableMinutes(m)}>{m} min</button>)}</div></div><div className="planner-steps">{planner.plan.map((item, index) => <div className="planner-step" key={`${item.type}-${index}`}><span>{index + 1}</span><div><b>{item.label}</b><small>{item.minutes} min · {item.type}</small></div></div>)}</div></section>
+    <section className="planner-card"><div><p className="eyebrow">NEXT BEST STUDY BLOCK</p><h3>{availableMinutes}-minute adaptive plan</h3><p className="muted">Choose the time you actually have today. The order adapts to due revision, repeated weak topics and unfinished course nodes.</p><div className="session-buttons">{[10,20,30,50,60].map((m) => <button key={m} className="secondary" onClick={() => setAvailableMinutes(m)}>{m} min</button>)}<input type="number" min="5" max="180" value={customMinutes} onChange={(e)=>setCustomMinutes(e.target.value)} placeholder="Custom min" onKeyDown={(e)=>{if(e.key==="Enter" && Number(e.currentTarget.value)>=5)setAvailableMinutes(Math.min(180,Number(e.currentTarget.value)))}} /></div></div><div className="planner-steps">{planner.plan.map((item, index) => <div className="planner-step" key={`${item.type}-${index}`}><span>{index + 1}</span><div><b>{item.label}</b><small>{item.minutes} min · {item.type}</small></div></div>)}</div></section>
 
     <div className="section-heading"><div><p className="eyebrow">ACTIVE MISSIONS</p><h2>Your preparation pathways</h2></div><span className="muted">{sessionCount} session{sessionCount === 1 ? "" : "s"} today</span></div>
     <div className="mission-grid">{missions.map((m) => <MissionCard key={m.id} mission={m} onStart={onStart} progress={missionProgress(sessions, m.id, attempts, revisions, courseNodes)} />)}</div>
@@ -449,6 +451,7 @@ function SourcePanel({ sources, setSources, contentChunks, setContentChunks, onC
 function McqPanel({ questionState, setQuestionState, setState, missionId, groundedQuestions, sources, contentChunks, onClose }) {
   const [questionType, setQuestionType] = useState("all");
   const [errorType, setErrorType] = useState("");
+  const [questionStartedAt, setQuestionStartedAt] = useState(Date.now());
   const [difficulty, setDifficulty] = useState("all");
   const [topicId, setTopicId] = useState("all");
   const sourceIds = sources.filter((source) => source.missionId === missionId).map((source) => source.id);
@@ -458,11 +461,12 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
   const isGroundedMode = verifiedQuestions.length > 0;
   const topicOptions = [...new Set(baseQuestions.map((item) => item.topicId))];
   const missionQuestions = baseQuestions.filter((item) => (questionType === "all" || item.questionType === questionType) && (difficulty === "all" || item.difficulty === difficulty) && (topicId === "all" || item.topicId === topicId));
-  const q = missionQuestions.length ? missionQuestions[questionState.index % missionQuestions.length] : null;
+  const q = missionQuestions.length ? selectNextQuestion(missionQuestions, { index: questionState.index, attempts: questionState.attemptHistory || [], revisions: [], now: Date.now() }) : null;
   const answered = questionState.selected !== null;
   const choose = (optionId) => {
     if (answered) return;
     const isCorrect = optionId === q.correctOptionId;
+    const timeSeconds = Math.max(0, Math.round((Date.now() - questionStartedAt) / 1000));
     const attempt = {
       id: crypto.randomUUID(),
       questionId: q.id,
@@ -472,7 +476,7 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
       selectedOptionId: optionId,
       isCorrect,
       marks: calculateMarks(isCorrect, getMissionMarking(q.missionId)),
-      timeSeconds: 0,
+      timeSeconds,
       attemptedAt: Date.now(),
       errorType: null,
     };
@@ -490,7 +494,8 @@ function McqPanel({ questionState, setQuestionState, setState, missionId, ground
     ...s,
     index: (s.index + 1) % Math.max(1, missionQuestions.length),
     selected: null,
-    lastAttemptId: null
+    lastAttemptId: null,
+    attemptHistory: [...(s.attemptHistory || []), q.id]
   }));
   return <div className="tool-overlay"><div className="tool-card">
     <button className="close-session" onClick={onClose}><X /></button>
@@ -602,17 +607,19 @@ function ReadinessPanel({ sessions, attempts, revisions, courseNodes, groundedQu
 }
 function RevisionPanel({ revisions, courseNodes, setState, onClose }) {
   const [index, setIndex] = useState(0);
+  const [errorType, setErrorType] = useState("");
   const due = getDueRevisions(revisions).sort((a, b) => a.dueAt - b.dueAt);
   const overdue = revisions.filter((r) => r.dueAt < Date.now() - 24 * 60 * 60 * 1000).length;
   const card = due[index];
   const topic = card ? courseNodes.find((n) => n.id === card.topicId || n.id === card.topicId)?.name : null;
   const review = (isCorrect) => {
     if (!card) return;
-    const updated = scheduleRevision(card, isCorrect);
+    const updated = applyAttemptToRevision(card, { isCorrect, errorType: isCorrect ? null : (errorType || "knowledge-gap") });
     setState((current) => ({
       ...current,
       revisions: [updated, ...current.revisions.filter((r) => r.id !== card.id)],
     }));
+    setErrorType("");
     setIndex((value) => Math.min(value, Math.max(0, due.length - 2)));
   };
   return <div className="tool-overlay"><div className="tool-card readiness-card">
@@ -622,7 +629,7 @@ function RevisionPanel({ revisions, courseNodes, setState, onClose }) {
       <div className="question-meta">{index + 1} / {due.length} due · {overdue} overdue · {card.missionId}</div>
       <h3>{topic || card.topicId}</h3>
       <p className="muted">Revision card due {new Date(card.dueAt).toLocaleString("en-IN")} · interval {card.intervalDays} day(s).</p>
-      <div className="session-controls">
+      <div className="form-row"><select value={errorType} onChange={(e)=>setErrorType(e.target.value)}><option value="">Classify error…</option>{RETENTION_ERROR_TYPES.map((type)=><option key={type} value={type}>{type}</option>)}</select></div><div className="session-controls">
         <button className="secondary" onClick={() => review(false)}>Need another review</button>
         <button className="primary" onClick={() => review(true)}><CheckCircle2 /> I remembered it</button>
       </div>
