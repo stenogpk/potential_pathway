@@ -67,7 +67,7 @@ export function buildStudyPlan({
   const candidates = [
     {
       type: "revision",
-      priority: due.length * 5 + weakRevisions.length * 2,
+      priority: due.length * 10 + weakRevisions.length * 2,
       label: due.length ? `Review ${due.length} due revision card${due.length > 1 ? "s" : ""}` : "",
     },
     {
