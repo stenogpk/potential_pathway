@@ -38,7 +38,7 @@ if (/^\\s*(import|export)\\s/m.test(bundle)) {
 // inline JavaScript (the startup diagnostic itself runs), so this removes the last
 // dependency on external module/classic script loading, MIME detection, or asset URL
 // resolution for the React bootstrap.
-const safeBundle = bundle.replace(/<\\/script/gi, "<\\\\/script");
+const safeBundle = bundle.replaceAll("</script", "<\\/script");
 const replacement = `<script>${safeBundle}</script>`;
 html = html.replace(match[0], replacement);
 
