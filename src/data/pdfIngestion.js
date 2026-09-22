@@ -17,7 +17,7 @@ export async function extractPdfPages(file) {
 
   // Load PDF.js only when a PDF is actually opened. Keeping it out of the initial
   // bundle avoids Android WebView startup failures on environments missing PDF.js globals.
-  const [{ default: pdfjsLib }, workerModule] = await Promise.all([
+  const [pdfjsLib, workerModule] = await Promise.all([
     import("pdfjs-dist/legacy/build/pdf.mjs"),
     import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url"),
   ]);
