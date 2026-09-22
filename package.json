@@ -23,7 +23,8 @@
     "validate:backup-manager": "node scripts/validate-backup-manager.mjs",
     "validate:course-engine-v2": "node scripts/validate-course-engine-v2.mjs",
     "validate:selection-engine": "node scripts/validate-selection-engine.mjs",
-    "validate:pyq-retention": "node scripts/validate-pyq-retention.mjs"
+    "validate:pyq-retention": "node scripts/validate-pyq-retention.mjs",
+    "validate:selection-loop-v2": "node scripts/validate-selection-loop-v2.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.4",

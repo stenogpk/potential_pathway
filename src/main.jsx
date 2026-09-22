@@ -152,7 +152,7 @@ function App() {
         </header>
 
         {active === "dashboard"
-          ? <Dashboard onStart={startSession} completed={completed} todayMinutes={todayMinutes} sessionCount={todaySessions.length} todayAttempts={todayAttempts} todayCorrect={todayCorrect} sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} contentChunks={contentChunks} />
+          ? <Dashboard onStart={startSession} completed={completed} todayMinutes={todayMinutes} sessionCount={todaySessions.length} todayAttempts={todayAttempts} todayCorrect={todayCorrect} sessions={state.sessions} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} contentChunks={contentChunks} groundedQuestions={groundedQuestions} sources={sources} />
           : <Mission mission={selectedMission} onStart={startSession} sessions={state.sessions.filter((s) => s.missionId === selectedMission.id)} attempts={state.attempts} revisions={state.revisions} courseNodes={courseNodes} />}
       </main>
 
@@ -222,9 +222,9 @@ function formatTime(seconds) {
   return `${m}:${s}`;
 }
 
-function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttempts, todayCorrect, sessions, attempts, revisions, courseNodes, contentChunks }) {
+function Dashboard({ onStart, completed, todayMinutes, sessionCount, todayAttempts, todayCorrect, sessions, attempts, revisions, courseNodes, contentChunks, groundedQuestions, sources }) {
   const [availableMinutes, setAvailableMinutes] = useState(50);
-  const planner = buildStudyPlan({ missionId: "pcs", availableMinutes, sessions, attempts, revisions, courseNodes, contentChunks });
+  const planner = buildStudyPlan({ missionId: "pcs", availableMinutes, sessions, attempts, revisions, courseNodes, contentChunks, groundedQuestions, sourceIds: sources.filter((s) => s.missionId === "pcs").map((s) => s.id), chunkIds: contentChunks.filter((c) => c.missionId === "pcs").map((c) => c.id) });
   return <div className="content">
     <section className="hero-card">
       <div>
